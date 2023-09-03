@@ -2,7 +2,7 @@ import numpy as np
 from analyzer import Analyzer
 
 init_mat = np.array([
-    [0, 0, 0],
+    [1, 0, 0],
     [0, 0, 0],
     [0, 0, 0]
 ])
@@ -39,7 +39,8 @@ def next_func(mat):
                 new_mat[y][x] = 1
                 yield new_mat
 
-
 an = Analyzer(init_mat, max_mat, next_func, sym_func, end_func)
 an.construct_game_graph()
 an.make_tree()
+print(an.mat_to_min_hash(init_mat))
+print(an.example(0))
