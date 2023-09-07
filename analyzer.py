@@ -1,9 +1,10 @@
 import numpy as np 
 from collections import deque
 import random
+from typing import Tuple, List, Dict
 
 class Analyzer():
-    def __init__(self, init_mat, max_mat, next_func, sym_func, end_func):
+    def __init__(self, init_mat: np.ndarray, max_mat: np.ndarray, next_func, sym_func, end_func):
         self.dim = len(init_mat.shape)
         self.init_mat = init_mat
         self.max_mat = max_mat
@@ -11,19 +12,19 @@ class Analyzer():
             raise Exception("init_mat and max_mat shape mismatched")
         
         self.base1_mat, self.base2_mat = self._create_base_mat(max_mat)
-        self.max_hash = np.max(self.base2_mat)
+        self.max_hash: np.ndarray = np.max(self.base2_mat)
 
         self.next_func = next_func
         self.sym_func = sym_func
         self.end_func = end_func
 
-        self.graph = None
-        self.graph_inv = None
-        self.hash_list = None
-        self.hash_dict = None
-        self.dist_mat = None
+        self.graph: List[list] | None = None
+        self.graph_inv: List[list] | None = None
+        self.hash_list: np.ndarray | None = None
+        self.hash_dict: Dict[int] | None = None
+        self.dist_mat: np.ndarray | None = None
 
-    def _create_base_mat(self, max_mat):
+    def _create_base_mat(self, max_mat: np.ndarray) -> Tuple[np.ndarray, np.ndarray]: 
         s = max_mat.shape
         flat_mat = max_mat.ravel()
         ac_list = [1]
@@ -36,23 +37,23 @@ class Analyzer():
 
         return base1_mat, base2_mat
     
-    def mat_to_hash(self, mat):
+    def _mat_to_hash(self, mat: np.ndarray) -> int:
         hash = np.sum(mat * self.base1_mat)
         return hash
     
-    def hash_to_mat(self, hash):
+    def hash_to_mat(self, hash: int) -> np.ndarray:
         mat = hash % self.base2_mat // self.base1_mat
         return mat
 
-    def _mat_to_min_hash(self, mat):
+    def mat_to_min_hash(self, mat: np.ndarray) -> int:
         hash = self.max_hash
         for sym_mat in self.sym_func(mat):
-            hash = min(hash, self.mat_to_hash(sym_mat))
+            hash = min(hash, self._mat_to_hash(sym_mat))
             if hash in self.hash_dict: return hash
         return hash
 
     def construct_game_graph(self):
-        init_hash = self.mat_to_hash(self.init_mat)
+        init_hash = self._mat_to_hash(self.init_mat)
         self.graph = [[]]
         self.graph_inv = [[]]
         self.hash_list = [init_hash]
@@ -65,7 +66,7 @@ class Analyzer():
 
             if self.end_func(mat) != None: continue
             for next_mat in self.next_func(mat):
-                next_hash = self._mat_to_min_hash(next_mat)
+                next_hash = self.mat_to_min_hash(next_mat)
                 if next_hash in self.hash_dict:
                     next_ind = self.hash_dict[next_hash]
                     self.graph[ind].append(next_ind)
@@ -82,7 +83,7 @@ class Analyzer():
         
         self.state_num = len(self.hash_list)
     
-    def make_tree(self):
+    def solve_game_graph(self):
         if type(self.graph) == None: raise Exception("construct game graph before make tree")
 
         self.dist_mat = np.full(self.state_num, -1, np.int32)
@@ -122,34 +123,40 @@ class Analyzer():
         self.judge_mat[self.judge_mat == -1] = 1
         self.judge_mat -= 1
     
-    def next(self, now_mat):
+    def classify_next_patterns(self, now_mat: np.ndarray) -> Dict[Tuple[int, int], List[np.ndarray]]:
         next_mat_dict = dict()
         for next_mat in self.next_func(now_mat):
-            next_hash = self._mat_to_min_hash(next_mat)
+            next_hash = self.mat_to_min_hash(next_mat)
             next_ind = self.hash_dict[next_hash]
             dist = self.dist_mat[next_ind]
             judge = self.judge_mat[next_ind]
             if (dist, judge) in next_mat_dict:
-                next_mat_dict[(dist, judge)] += next_mat
+                next_mat_dict[(dist, judge)].append(next_mat)
             else:
                 next_mat_dict[(dist, judge)] = [next_mat]
         return next_mat_dict
     
-    def example(self, ind):
-        if type(self.dist_mat) == None: raise Exception("make tree before example")
-        hash = self.hash_list[ind]
-        mat = self.hash_to_mat(hash)
+    def mat_to_status(self, mat: np.ndarray) -> Tuple[int, int]:
+        hash = self.mat_to_min_hash(mat)
+        ind = self.hash_dict[hash]
+        dist = self.dist_mat[ind]
+        judge = self.judge_mat[ind]
+        return dist, judge
+    
+    def list_example(self, mat: np.ndarray) -> List[np.ndarray]:
+        if type(self.dist_mat) == None: raise Exception("make tree before list_example")
 
         log_list = [mat]
         while self.end_func(mat) == None:
-            next_mat_dict = self.next(mat)
+            next_mat_dict = self.classify_next_patterns(mat)
             max_k = (0, 1)
             for k in next_mat_dict.keys():
                 dist, judge = k
                 if max_k[1] > judge: max_k = k
-                elif max_k[0]*max_k[1] < dist*judge: max_k = k
-                elif max_k[0] < dist: max_k = k
-            print(next_mat_dict)
+                elif max_k[1] == judge:
+                    if max_k[0]*max_k[1] < dist*judge: max_k = k
+                    elif max_k[0]*max_k[1] == dist*judge:
+                        if max_k[0] < dist: max_k = k
             next_mat = random.choice(next_mat_dict[max_k])
             log_list.append(next_mat)
             mat = next_mat

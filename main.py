@@ -2,7 +2,7 @@ import numpy as np
 from analyzer import Analyzer
 
 init_mat = np.array([
-    [1, 0, 0],
+    [0, 0, 0],
     [0, 0, 0],
     [0, 0, 0]
 ])
@@ -30,17 +30,28 @@ def end_func(mat):
     if np.count_nonzero(rot_mat == 0) == 0: return 0
     return None
 
-def next_func(mat):
-    mat = mat*2%3
+def put_func(mat):
     for y in range(3):
         for x in range(3):
             if mat[y][x] == 0:
-                new_mat = mat.copy()
-                new_mat[y][x] = 1
-                yield new_mat
+                put_mat = mat.copy()
+                put_mat[y][x] = 1
+                yield put_mat
+
+def rev_func(mat):
+    rev_mat = mat*2%3
+    return rev_mat
+
+def next_func(mat):
+    for put_mat in put_func(mat):
+        next_mat = rev_func(put_mat)
+        yield next_mat
 
 an = Analyzer(init_mat, max_mat, next_func, sym_func, end_func)
 an.construct_game_graph()
-an.make_tree()
-print(an.mat_to_min_hash(init_mat))
-print(an.example(0))
+an.solve_game_graph()
+
+for mat in an.list_example(init_mat):
+    dist, judge = an.mat_to_status(mat)
+    print(dist, judge)
+    print(mat)
