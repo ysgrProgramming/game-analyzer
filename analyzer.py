@@ -4,7 +4,7 @@ import random
 from typing import Tuple, List, Dict
 
 class Analyzer():
-    def __init__(self, init_mat: np.ndarray, max_mat: np.ndarray, next_func, sym_func, end_func):
+    def __init__(self, init_mat: np.ndarray, max_mat: np.ndarray, next_func, sym_func, end_func, default=0):
         self.dim = len(init_mat.shape)
         self.init_mat = init_mat
         self.max_mat = max_mat
@@ -52,6 +52,42 @@ class Analyzer():
             if hash in self.hash_dict: return hash
         return hash
 
+    def week_solve(self):
+        init_hash = self._mat_to_hash(self.init_mat)
+        self.hash_list = [init_hash]
+        self.hash_dict = {init_hash: 0}
+        todo = [0]
+        directory = []
+        while todo:
+            ind = todo[-1]
+
+            if len(todo) == len(directory):
+                next_ind = directory.pop()
+                todo.append(next_ind)
+            else:
+                
+            hash = self.hash_list[ind]
+            mat = self.hash_to_mat(hash)
+
+            if self.end_func(mat) != None: continue
+            for next_mat in self.next_func(mat):
+                next_hash = self.mat_to_min_hash(next_mat)
+                if next_hash in self.hash_dict:
+                    next_ind = self.hash_dict[next_hash]
+                    self.graph[ind].append(next_ind)
+                    self.graph_inv[next_ind].append(ind)
+                else:
+                    next_ind = len(self.hash_list)
+                    self.hash_list.append(next_hash)
+                    self.hash_dict[next_hash] = next_ind
+                    self.graph.append([])
+                    self.graph_inv.append([])
+                    self.graph[ind].append(next_ind)
+                    self.graph_inv[next_ind].append(ind)
+                    todo.append(next_ind)
+        
+        self.state_num = len(self.hash_list)
+    
     def construct_game_graph(self):
         init_hash = self._mat_to_hash(self.init_mat)
         self.graph = [[]]
