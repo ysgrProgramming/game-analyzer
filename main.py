@@ -48,10 +48,4 @@ def next_func(mat):
         yield next_mat
 
 an = Analyzer(init_mat, max_mat, next_func, sym_func, end_func)
-an.construct_game_graph()
-an.solve_game_graph()
-
-for mat in an.list_example(init_mat):
-    dist, judge = an.mat_to_status(mat)
-    print(dist, judge)
-    print(mat)
+print(an.week_solve())
