@@ -3,7 +3,6 @@ from collections import deque
 import random
 from typing import Tuple, List, Dict
 import time
-import sys
 
 class Analyzer():
     def __init__(self, init_mat: np.ndarray[int], max_mat: np.ndarray[int], next_func, sym_func=lambda mat: [mat.copy()], end_func=lambda mat: None, default=0):
@@ -31,13 +30,13 @@ class Analyzer():
 
     def _create_base_mat(self, max_mat: np.ndarray[int]) -> Tuple[np.ndarray, np.ndarray]:
         if np.count_nonzero(max_mat <= 0) > 0: raise Exception("max_mat must not contains 0 or negative")
+        max_mat += 1
         s = max_mat.shape
         flat_mat = max_mat.ravel()
         ac_list = [1]
         for num in flat_mat:
-            ac_list.append(num*ac_list[-1])
+            ac_list.append(int(num)*ac_list[-1])
         ac_mat = np.array(ac_list)
-
         base1_mat = ac_mat[:-1].reshape(s)
         base2_mat = ac_mat[1:].reshape(s)
 
@@ -50,7 +49,9 @@ class Analyzer():
     def mat_to_min_hash(self, mat: np.ndarray) -> int:
         hash = self.max_hash
         for sym_mat in self.sym_func(mat):
-            hash = min(hash, np.sum(sym_mat * self.base1_mat))
+            sym_hash = np.sum(sym_mat * self.base1_mat)
+            if sym_hash < hash:
+                hash = sym_hash
         return hash
 
     # eval(3:uc(skiped), 2:uc(cycle), 1:win, 0:draw, -1:lose, -2:uc(week))
@@ -87,13 +88,14 @@ class Analyzer():
         else:
             p_block[1] = ev1
             p_block[2] = depth1
-    
-    def add_hash(self, hash, ev=3, depth=0):
-        ind = len(self.hash_list)                                                                                                                                                                                                                                                                                                                                                                                 
+
+    def add_hash(self, hash, ev=3, step=0):
+        ind = len(self.hash_list)
         self.hash_list.append(hash)
         self.hash_dict[hash] = ind
         self.eval_list.append(ev)
-        self.step_list.append(depth)
+        self.step_list.append(step)
+        self.graph.append([])
         self.graph_inv.append([])
         self.child_count_list.append(0)
         return ind
@@ -103,7 +105,7 @@ class Analyzer():
         self.eval_list[ind] = ev
         self.step_list[ind] = step
 
-    def alpha_beta_analyze(self, max_step=float('inf'), rel_depth=0):
+    def alpha_beta_analyze(self, max_step=10**15, rel_depth=0):
         
         print("\n--- start alpha beta analyze ---\n")
 
