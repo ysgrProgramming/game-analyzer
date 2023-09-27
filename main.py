@@ -48,4 +48,5 @@ def next_func(mat):
         yield next_mat
 
 an = Analyzer(init_mat, max_mat, next_func, sym_func, end_func)
-print(an.week_solve())
+an.alpha_beta_analyze(max_step=9, rel_depth=0)
+an.retrograde_analyze()
