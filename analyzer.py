@@ -1,7 +1,7 @@
 import numpy as np 
 from collections import deque
 import random
-from typing import Tuple, List, Dict
+from typing import Generator
 import time
 
 class Analyzer():
@@ -10,6 +10,7 @@ class Analyzer():
         self.init_mat = init_mat
         self.max_mat = max_mat
         self.default = default
+        self.max_search_depth = 1000
         if self.init_mat.shape != self.max_mat.shape:
             raise Exception("init_mat and max_mat shape mismatched")
         
@@ -22,13 +23,13 @@ class Analyzer():
         
         self.hash_list = []
         self.hash_dict = dict()
-        self.eval_list = []
-        self.step_list = []
+        self.eval_min_list = []
+        self.eval_max_list = []
         self.graph = []
         self.graph_inv = []
         self.child_count_list = []
 
-    def _create_base_mat(self, max_mat: np.ndarray[int]) -> Tuple[np.ndarray, np.ndarray]:
+    def _create_base_mat(self, max_mat: np.ndarray[int]) -> tuple[np.ndarray, np.ndarray]:
         if np.count_nonzero(max_mat <= 0) > 0: raise Exception("max_mat must not contains 0 or negative")
         max_mat += 1
         s = max_mat.shape
@@ -46,13 +47,39 @@ class Analyzer():
         mat = hash % self.base2_mat // self.base1_mat
         return mat
 
-    def mat_to_min_hash(self, mat: np.ndarray) -> int:
-        hash = self.max_hash
+    def mat_to_hash(self, mat: np.ndarray) -> int:
+        hash = np.sum(mat * self.base1_mat)
+        return hash
+    
+    def mat_to_all_hash(self, mat: np.ndarray) -> Generator[list[int]]:
         for sym_mat in self.sym_func(mat):
             sym_hash = np.sum(sym_mat * self.base1_mat)
-            if sym_hash < hash:
-                hash = sym_hash
-        return hash
+            yield sym_hash
+    
+    def next_eval(self, eval):
+        return eval - ((eval > 0) - (eval < 0))
+    
+    def analyze(self, mat, max_depth):
+        idx = self.add_hash(hash)
+        hash = self.mat_to_hash(mat)
+        if hash in self.hash_dict:
+            idx = self.hash_dict[hash]
+            eval_max = self.eval_max_list[idx]
+            eval_min = self.eval_min_list[idx]
+            return eval_max, eval_min
+        else:
+            idx = self.add_hash(hash)
+            end_ev = self.end_func(mat)
+            eval_max, eval_min = -self.max_search_depth, -self.max_search_depth
+            if end_ev is None:
+                for next_mat in self.next_func(mat):
+                    next_eval_max, next_eval_min = self.analyze(self, next_mat)
+                    maybe_eval_max = -self.next_eval(next_eval_min)
+                    maybe_eval_min = -self.next_eval(next_eval_max)
+                    eval_max = max(eval_max, maybe_eval_max)
+                    eval_min = max(eval_min, maybe_eval_min)
+            else:
+                eval_max, eval_min = 
 
     # eval(3:uc(skiped), 2:uc(cycle), 1:win, 0:draw, -1:lose, -2:uc(week))
     def merge(self, p_block, c_block, rel_depth):
@@ -89,21 +116,22 @@ class Analyzer():
             p_block[1] = ev1
             p_block[2] = depth1
 
-    def add_hash(self, hash, ev=3, step=0):
-        ind = len(self.hash_list)
+    def add_hash(self, hash):
+        idx = len(self.hash_list)
         self.hash_list.append(hash)
-        self.hash_dict[hash] = ind
-        self.eval_list.append(ev)
-        self.step_list.append(step)
+        self.hash_dict[hash] = idx
+
         self.graph.append([])
         self.graph_inv.append([])
+        self.eval_max_list.append(-self.max_search_depth)
+        self.eval_min_list.append(-self.max_search_depth)
         self.child_count_list.append(0)
-        return ind
+        return idx
 
     def register(self, block):
-        ind, ev, step = block[0], block[1], block[2]
-        self.eval_list[ind] = ev
-        self.step_list[ind] = step
+        idx, ev, step = block[0], block[1], block[2]
+        self.eval_list[idx] = ev
+        self.step_list[idx] = step
 
     def alpha_beta_analyze(self, max_step=10**15, rel_depth=0):
         
