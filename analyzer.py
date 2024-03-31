@@ -59,6 +59,15 @@ class Analyzer():
     def next_eval(self, eval):
         return eval - ((eval > 0) - (eval < 0))
     
+    def eval_to_params(self, eval):
+        result = np.sign(eval)
+        dist = self.max_search_depth - np.abs(eval)
+        return result, dist
+    
+    def params_to_eval(self, result, dist):
+        eval = (self.max_search_depth - dist) * result
+        return eval
+    
     def analyze(self, mat, max_depth):
         idx = self.add_hash(hash)
         hash = self.mat_to_hash(mat)
@@ -66,12 +75,11 @@ class Analyzer():
             idx = self.hash_dict[hash]
             eval_max = self.eval_max_list[idx]
             eval_min = self.eval_min_list[idx]
-            return eval_max, eval_min
         else:
             idx = self.add_hash(hash)
             end_ev = self.end_func(mat)
-            eval_max, eval_min = -self.max_search_depth, -self.max_search_depth
             if end_ev is None:
+                eval_max, eval_min = self.params_to_eval(1, 0), self.params_to_eval(-1, 0)
                 for next_mat in self.next_func(mat):
                     next_eval_max, next_eval_min = self.analyze(self, next_mat)
                     maybe_eval_max = -self.next_eval(next_eval_min)
@@ -79,7 +87,9 @@ class Analyzer():
                     eval_max = max(eval_max, maybe_eval_max)
                     eval_min = max(eval_min, maybe_eval_min)
             else:
-                eval_max, eval_min = 
+                eval_max, eval_min = self.params_to_eval(end_ev, 0), self.params_to_eval(end_ev, 0)
+
+        return eval_max, eval_min
 
     # eval(3:uc(skiped), 2:uc(cycle), 1:win, 0:draw, -1:lose, -2:uc(week))
     def merge(self, p_block, c_block, rel_depth):
