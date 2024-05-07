@@ -1,6 +1,6 @@
 from base import Game
 import numpy as np
-from typing import Generator
+from collections.abc import Generator
 
 class TicTacToe(Game):
     size: int
