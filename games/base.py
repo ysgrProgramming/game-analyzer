@@ -18,3 +18,7 @@ class Game(ABC):
     @abstractmethod
     def find_mirror_states(self, state: np.ndarray[int]) -> Generator[np.ndarray[int], None, None]:
         yield state
+    
+    @abstractmethod
+    def evaluate_state(self, state: np.ndarray[int]) -> int | None:
+        return None
