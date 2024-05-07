@@ -3,26 +3,61 @@ from collections import deque
 import random
 from games import Game
 from result import Result
-from util import Converter
+from util import StateHashConverter, EvalParamsConverter
 import time
 
 class StrongSolver():
-    def analyze(self):
-        self.alpha_beta_analyze2(self.init_mat, self.max_search_depth)
+    hash_list: list[int] = []
+    hash_dict: dict[int, int] = []
+    eval_list: list[int | None] = []
+    graph_inv: list[list[int]] = []
+    child_count_list: list[int] = []
 
     def solve(self, game: Game, max_depth: int = 1000) -> Result:
-        hash_list: list[int] = []
-        hash_dict: dict[int, int] = []
-        eval_list: list[int | None] = []
-        graph_inv: list[list[int]] = []
-        child_count_list: list[int] = []
+        sh_conv = StateHashConverter(shape=game.shape, range_of_elements=game.range_of_elements)
+        ep_conv = EvalParamsConverter(max_depth=max_depth)
 
-        converter = Converter(game.shape, game.range_of_elements)
+        init_idx = self.register_state(game.init_state, ep_conv)
+        extention_todo = [init_idx]
+        while extention_todo:
+            idx = extention_todo.pop()
+            hash = self.hash_list[idx]
+            state = sh_conv.hash_to_state(hash)
+            eval_tmp = self.ep_conv.params_to_eval(-1, 1)
+            for next_state, next_eval in game.find_next_states(state):
+                next_hash = sh_conv.state_to_hash(next_state)
+                if next_hash in self.hash_dict:
+                    next_idx = self.hash_dict[next_hash]
+                else:
+                    next_idx = self.register_state(next_state)
 
+                next_eval = self.eval_list[next_idx]
+                if next_eval is not None and self.child_count_list[next_idx] == 0:
+                    eval_tmp = max(eval_tmp, ep_conv.next_eval(next_eval))
+                else:
+                    self.child_count_list[idx] += 1
+                    self.graph_inv[next_idx].append(idx)
+
+    
+    def register_state(self, state: np.ndarray, ep_conv: EvalParamsConverter) -> int:
+        idx = len(self.hash_list)
+        min_hash = self.max_hash
+        for hash in self.state_to_all_hash(state):
+            if hash in self.hash_dict and self.hash_dict[hash] != idx: raise Exception("sym_func error")
+            self.hash_dict[hash] = idx
+            min_hash = min(min_hash, hash)
+        self.hash_list.append(min_hash)
+
+        self.graph_inv.append([])
+        self.eval_list.append(None)
+        self.min_eval_list.append(self.params_to_eval(-1, 0))
+        self.child_count_list.append(0)
+        return idx
+    
     #todo: eval関連ずるしない
     #todo: 履歴追加
-    def alpha_beta_analyze(self, mat: np.ndarray, max_depth: int, history: dict[int, int] = dict()) -> tuple[int, int]:
-        hash = self.mat_to_hash(mat)
+    def alpha_beta_analyze(self, state: np.ndarray, max_depth: int, history: dict[int, int] = dict()) -> tuple[int, int]:
+        hash = self.state_to_hash(state)
 
         if hash in self.hash_dict:
             idx = self.hash_dict[hash]
@@ -36,8 +71,8 @@ class StrongSolver():
                 return max_eval, min_eval
             end_eval = None
         else:
-            idx = self.add_mat(mat)
-            end_eval = self.end_func(mat)
+            idx = self.register_state(state)
+            end_eval = self.end_func(state)
         
         history_idx = len(history)
         history[idx] = history_idx
@@ -46,10 +81,10 @@ class StrongSolver():
             is_next_empty = True
             self.max_eval_list[idx] = max_eval
             self.min_eval_list[idx] = min_eval
-            for next_mat in self.next_func(mat):
+            for next_state in self.next_func(state):
                 if max_depth <= 0: break
                 is_next_empty = False
-                next_max_eval, next_min_eval = self.alpha_beta_analyze(next_mat, max_depth-1)
+                next_max_eval, next_min_eval = self.alpha_beta_analyze(next_state, max_depth-1)
                 maybe_max_eval = -self.next_eval(next_min_eval)
                 maybe_min_eval = -self.next_eval(next_max_eval)
                 max_prop_eval = max(max_prop_eval, maybe_max_eval)
@@ -67,25 +102,11 @@ class StrongSolver():
         del history[idx]
         #print("max_eval =", self.eval_to_params(max_eval), "min_eval =", self.eval_to_params(min_eval), "end_eval =", end_eval, "max_depth =", max_depth)
         #print("idx =", idx)
-        #print(mat)
+        #print(state)
         #print()
         return max_eval, min_eval
     
-    def add_mat(self, mat: np.ndarray) -> int:
-        idx = len(self.hash_list)
-        min_hash = self.max_hash
-        for hash in self.mat_to_all_hash(mat):
-            if hash in self.hash_dict and self.hash_dict[hash] != idx: raise Exception("sym_func error")
-            self.hash_dict[hash] = idx
-            min_hash = min(min_hash, hash)
-        self.hash_list.append(min_hash)
-
-        self.graph.append([])
-        self.graph_inv.append([])
-        self.max_eval_list.append(self.params_to_eval(1, 0))
-        self.min_eval_list.append(self.params_to_eval(-1, 0))
-        self.child_count_list.append(0)
-        return idx
+    
     
     def retrograde_analyze(self):
 
@@ -126,12 +147,12 @@ class StrongSolver():
         print("\n-- retrograde analyze finished --\n")
 
         print(f"total elapsed time = {time.time()-start_time:.3f}")
-        print("analyze finished, You can use 'mat_to_status' or 'list_example' etc. to get the results of analysis.")
+        print("analyze finished, You can use 'state_to_status' or 'list_example' etc. to get the results of analysis.")
     
-    def classify_next_patterns(self, now_mat: np.ndarray) -> dict[int, int]:
+    def classify_next_patterns(self, now_state: np.ndarray) -> dict[int, int]:
         next_hash_dict = dict()
-        for next_mat in self.next_func(now_mat):
-            next_hash = self.mat_to_hash(next_mat)
+        for next_state in self.next_func(now_state):
+            next_hash = self.state_to_hash(next_state)
             if next_hash not in self.hash_dict: continue
             next_idx = self.hash_dict[next_hash]
             eval = self.min_eval_list[next_idx]
@@ -141,28 +162,28 @@ class StrongSolver():
                 next_hash_dict[next_hash] = eval
         return next_hash_dict
     
-    def list_example(self, mat: np.ndarray) -> list[np.ndarray]:
-        log_list = [mat]
-        end_evalal = self.end_func(mat)
+    def list_example(self, state: np.ndarray) -> list[np.ndarray]:
+        log_list = [state]
+        end_evalal = self.end_func(state)
         if end_evalal is None:
-            next_hash_dict = self.classify_next_patterns(mat)
+            next_hash_dict = self.classify_next_patterns(state)
             if len(next_hash_dict) > 0:
                 min_eval = self.max_search_depth
-                mat_list = []
+                state_list = []
                 for hash, eval in next_hash_dict.items():
-                    mat = self.hash_to_mat(hash)
+                    state = self.hash_to_state(hash)
                     if eval < min_eval:
-                        mat_list = []
+                        state_list = []
                         min_eval = eval
-                    if eval <= min_eval: mat_list.append(mat)
-                next_mat = random.choice(mat_list)
-                log_list.extend(self.list_example(next_mat))
+                    if eval <= min_eval: state_list.append(state)
+                next_state = random.choice(state_list)
+                log_list.extend(self.list_example(next_state))
         return log_list
 
-    def print_example(self, mat: np.ndarray):
-        log_list = self.list_example(mat)
-        for mat in log_list:
-            hash = self.mat_to_hash(mat)
+    def print_example(self, state: np.ndarray):
+        log_list = self.list_example(state)
+        for state in log_list:
+            hash = self.state_to_hash(state)
             idx = self.hash_dict[hash]
             max_eval = self.max_eval_list[idx]
             min_eval = self.min_eval_list[idx]
@@ -170,4 +191,4 @@ class StrongSolver():
             min_res, min_depth = self.eval_to_params(min_eval)
             print(f"max: res = {max_res}, depth = {max_depth}")
             print(f"min: res = {min_res}, depth = {min_depth}")
-            print(mat, "\n")
+            print(state, "\n")
