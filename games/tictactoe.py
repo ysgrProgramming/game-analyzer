@@ -47,6 +47,3 @@ class TicTacToe(Game):
         for put_state in self.find_put_states(state):
             next_state = self.find_reverse_state(put_state)
             yield next_state
-
-tictactoe = TicTacToe(size=5, require=4)
-print(tictactoe.init_state)
