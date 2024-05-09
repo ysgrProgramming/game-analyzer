@@ -1,7 +1,9 @@
 import numpy as np
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Iterable
+from dataclasses import dataclass
 
+@dataclass
 class Game(ABC):
     init_state: np.ndarray[int]
     range_of_elements: tuple[int, int]

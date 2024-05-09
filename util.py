@@ -1,19 +1,16 @@
 import numpy as np
+from dataclasses import dataclass
 
 class StateHashConverter:
-    shape: tuple
-    range_of_elements: tuple[int, int]
-    _higher_base: np.ndarray
-    _lower_base: np.ndarray
-
     def __init__(self, shape: tuple, range_of_elements: tuple[int, int]):
         self.shape = shape
         self.range_of_elements = range_of_elements
         elements = np.prod(shape)
         range_size = range_of_elements[1] - range_of_elements[0]
+        self.max_hash = range_size**elements
         x = np.arange(elements)
-        self._higher_base = range_size**(x+1)
-        self._lower_base = range_size**x
+        self._higher_base = (range_size**(x+1)).reshape(shape)
+        self._lower_base = (range_size**x).reshape(shape)
     
     def hash_to_state(self, hash: int) -> np.ndarray:
         state = hash % self._higher_base // self._lower_base
@@ -24,8 +21,6 @@ class StateHashConverter:
         return hash
     
 class EvalParamsConverter:
-    _max_depth: int
-
     def __init__(self, max_depth=1000):
         self._max_depth = max_depth
     

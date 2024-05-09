@@ -1,4 +1,4 @@
-from base import Game
+from .base import Game
 import numpy as np
 from collections.abc import Generator
 

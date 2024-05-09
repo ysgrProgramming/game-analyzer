@@ -3,10 +3,13 @@ import random
 from games import Game
 from result import Result
 from util import StateHashConverter, EvalParamsConverter
+from .base import Solver
+from dataclasses import dataclass
 
-class StrongSolver():
+@dataclass
+class StrongSolver(Solver):
     hash_list: list[int] = []
-    hash_dict: dict[int, int] = []
+    hash_dict: dict[int, int] = dict()
     eval_list: list[int | None] = []
     graph_inv: list[list[int]] = []
     child_count_list: list[int] = []
@@ -19,28 +22,36 @@ class StrongSolver():
         self.sh_conv = StateHashConverter(shape=game.shape, range_of_elements=game.range_of_elements)
         self.ep_conv = EvalParamsConverter(max_depth=max_depth)
 
-        init_idx = self.register_state(game.init_state, self.ep_conv)
+        init_idx = self.register_state(game.init_state)
         extention_todo = [init_idx]
+        min_eval = self.ep_conv.params_to_eval(-1, 0)
         while extention_todo:
             idx = extention_todo.pop()
             hash = self.hash_list[idx]
             state = self.sh_conv.hash_to_state(hash)
-            eval_tmp = self.ep_conv.params_to_eval(-1, 0)
+            eval_tmp = min_eval
             for next_state in game.find_next_states(state):
                 next_hash = self.sh_conv.state_to_hash(next_state)
                 if next_hash in self.hash_dict:
                     next_idx = self.hash_dict[next_hash]
                 else:
                     next_idx = self.register_state(next_state)
-                    next_eval = game.evaluate_state(next_state)
-                    if next_eval is not None: self.confirm(next_idx, next_eval)
-
+                    next_res = game.evaluate_state(next_state)
+                    if next_res is not None:
+                        next_eval = self.ep_conv.params_to_eval(next_res, 0)
+                        self.confirm(next_idx, next_eval)
+                    else: extention_todo.append(next_idx)
                 if self.is_confirmed(next_idx):
+                    next_eval = self.eval_list[next_idx]
                     eval_tmp = max(eval_tmp, self.ep_conv.next_eval(next_eval))
                 else:
                     self.child_count_list[idx] += 1
                     self.graph_inv[next_idx].append(idx)
-        
+            if eval_tmp == min_eval:
+                eval = self.game.default_eval
+                self.confirm(idx, eval)
+            else:
+                self.eval_list[idx] = eval
         draw_eval = self.ep_conv.params_to_eval(0, 0)
         for idx in range(len(self.hash_list)):
             self.graph_inv[idx] = []
@@ -53,7 +64,7 @@ class StrongSolver():
     
     def register_state(self, state: np.ndarray) -> int:
         idx = len(self.hash_list)
-        min_hash = self.max_hash
+        min_hash = self.sh_conv.max_hash
         for mirror_state in self.game.find_mirror_states(state):
             hash = self.sh_conv.state_to_hash(mirror_state)
             if hash in self.hash_dict and self.hash_dict[hash] != idx: raise Exception("mirror func error")

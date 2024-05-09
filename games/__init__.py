@@ -1,1 +1,2 @@
-from base import Game
+from .base import Game
+from .tictactoe import TicTacToe
