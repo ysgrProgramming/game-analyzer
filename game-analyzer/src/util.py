@@ -1,6 +1,20 @@
 import numpy as np
-from dataclasses import dataclass
+from typing import Hashable, Iterable
 
+
+def convert_iterable_to_hashable(variable: Hashable | Iterable[Iterable | Hashable]) -> Hashable:
+    if isinstance(variable, Hashable):
+        return variable
+    elif isinstance(variable, Iterable):
+        return tuple(convert_iterable_to_hashable(item) for item in variable) # type: ignore
+    else:
+        raise Exception("cannot convert to hashable")
+
+def convert_statedict_to_hashable(dictionary: dict[str, Hashable | Iterable]):
+    keys = sorted(k for k in dictionary.keys() if not k.startswith("_"))
+    variables = tuple(map(lambda k: convert_iterable_to_hashable(dictionary[k]), keys))
+    return variables
+        
 class StateHashConverter:
     def __init__(self, shape: tuple, range_of_elements: tuple[int, int]):
         self.shape = shape

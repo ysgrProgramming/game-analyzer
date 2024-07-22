@@ -1,6 +1,6 @@
 import numpy as np
 import random
-from games import Game
+from game import Game
 from result import Result
 from util import StateHashConverter, EvalParamsConverter
 from .base import Solver

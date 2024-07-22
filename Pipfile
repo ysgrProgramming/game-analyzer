@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 numpy = "*"
 pydantic = "*"
+ruff = "*"
 
 [dev-packages]
 ipykernel = "*"
