@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools", "setuptools_scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "game-analyzer"
+version = "0.1.0"
+description = "Analyze a game"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [{name = "Yuya Mizutani", email = "mizutaniexe@gmail.com"}]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.21.0",
+    "pandas>=1.3.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff"
+]
+
+[tool.setuptools.packages.find]
+where = ["game_analyzer/src"]

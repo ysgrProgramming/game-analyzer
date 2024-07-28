@@ -7,9 +7,10 @@ name = "pypi"
 numpy = "*"
 pydantic = "*"
 ruff = "*"
+game-analyzer = {editable = true, path = "."}
 
 [dev-packages]
 ipykernel = "*"
 
 [requires]
-python_version = "3.11"
+python_version = ">=3.9"
