@@ -6,33 +6,25 @@ def convert_iterable_to_hashable(variable: Hashable | Iterable[Iterable | Hashab
     if isinstance(variable, Hashable):
         return variable
     elif isinstance(variable, Iterable):
-        return tuple(convert_iterable_to_hashable(item) for item in variable) # type: ignore
+        return tuple(convert_iterable_to_hashable(item) for item in variable)
     else:
         raise Exception("cannot convert to hashable")
 
-def convert_statedict_to_hashable(dictionary: dict[str, Hashable | Iterable]):
+
+def convert_dict_to_hashable(dictionary: dict[str, Hashable | Iterable]):
+    if not isinstance(dictionary, dict):
+        raise TypeError("type must be dict")
     keys = sorted(k for k in dictionary.keys() if not k.startswith("_"))
     variables = tuple(map(lambda k: convert_iterable_to_hashable(dictionary[k]), keys))
     return variables
-        
-class StateHashConverter:
-    def __init__(self, shape: tuple, range_of_elements: tuple[int, int]):
-        self.shape = shape
-        self.range_of_elements = range_of_elements
-        elements = np.prod(shape)
-        range_size = range_of_elements[1] - range_of_elements[0]
-        self.max_hash = range_size**elements
-        x = np.arange(elements)
-        self._higher_base = (range_size**(x+1)).reshape(shape)
-        self._lower_base = (range_size**x).reshape(shape)
-    
-    def hash_to_state(self, hash: int) -> np.ndarray:
-        state = hash % self._higher_base // self._lower_base
-        return state
 
-    def state_to_hash(self, state: np.ndarray) -> int:
-        hash = np.sum(state * self._lower_base)
-        return hash
+
+def convert_object_to_hashable(object: Hashable | Iterable[Iterable | Hashable] | dict[str, Hashable | Iterable]):
+    if isinstance(object, dict):
+        return convert_dict_to_hashable(object)
+    else:
+        return convert_iterable_to_hashable(object)
+
     
 class EvalParamsConverter:
     def __init__(self, max_depth=1000):

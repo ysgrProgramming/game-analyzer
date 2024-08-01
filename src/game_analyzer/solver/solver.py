@@ -2,26 +2,49 @@ import numpy as np
 import random
 from game import Game
 from result import Result
-from util import StateHashConverter, EvalParamsConverter
-from .base import Solver
+from util import convert_object_to_hashable, EvalParamsConverter
 from dataclasses import dataclass
+from typing import Any
+
 
 @dataclass
-class StrongSolver(Solver):
-    hash_list: list[int] = []
-    hash_dict: dict[int, int] = dict()
-    eval_list: list[int | None] = []
-    graph_inv: list[list[int]] = []
-    child_count_list: list[int] = []
+class Solver:
     game: Game
-    sh_conv: StateHashConverter
-    ep_conv: EvalParamsConverter
+    _ep_conv: EvalParamsConverter | None = None
+    _hash_dict: dict[int, int] = {}
+    _eval_list: list[int | None] = []
+    _graph_inv: list[list[int]] = []
+    _child_count_list: list[int] = []
+
+    def solve(self, max_depth: int = 1000) -> Result:
+        self.ep_conv = EvalParamsConverter(max_depth)
+    
+    def solve(self, state: Any, max_depth: int):
+        min_eval = self.ep_conv.params_to_eval(-1, 0)
+        eval_tmp = min_eval
+        for next_state in self.game.find_next_states(state):
+            next_hash = convert_object_to_hashable(next_state)
+            if next_hash in self._hash_dict:
+                next_idx = self._hash_dict[next_hash]
+            else:
+                next_idx = self.register_state(next_state)
+                next_res = self.game.evaluate_state(next_state)
+                if next_res is not None:
+                    next_eval = self.ep_conv.params_to_eval(next_res, 0)
+                    self.confirm(next_idx, next_eval)
+                else:
+                    next_res = self.solve(next_state, max_depth-1)
+            if self.is_confirmed(next_idx):
+                next_eval = self._eval_list[next_idx]
+                eval_tmp = max(eval_tmp, self.ep_conv.next_eval(next_eval))
+            else:
+                self.child_count_list[idx] += 1
+                self.graph_inv[next_idx].append(idx)
+            
 
     def solve(self, game: Game, max_depth: int = 1000) -> Result:
         self.game = game
-        self.sh_conv = StateHashConverter(shape=game.shape, range_of_elements=game.range_of_elements)
-        self.ep_conv = EvalParamsConverter(max_depth=max_depth)
-
+        self.ep_conv = EvalParamsConverter(max_depth)
         init_idx = self.register_state(game.init_state)
         extention_todo = [init_idx]
         min_eval = self.ep_conv.params_to_eval(-1, 0)

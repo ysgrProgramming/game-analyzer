@@ -8,7 +8,8 @@ x_list = list(range(1, 4))
 def next_func(mat):
     for x in x_list:
         put_mat = mat-x
-        if put_mat[0] < 0: continue
+        if put_mat[0] < 0:
+            continue
         yield put_mat
 
 an = Analyzer(init_mat, max_mat, next_func, default=-1)

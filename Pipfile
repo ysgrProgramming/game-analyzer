@@ -6,11 +6,12 @@ name = "pypi"
 [packages]
 numpy = "*"
 pydantic = "*"
-ruff = "*"
 game-analyzer = {editable = true, path = "."}
 
 [dev-packages]
 ipykernel = "*"
+ruff = "*"
+pytest = "*"
 
 [requires]
 python_version = ">=3.9"
