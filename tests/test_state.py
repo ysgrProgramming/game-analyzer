@@ -1,6 +1,8 @@
-from game_analyzer import Game
 from dataclasses import dataclass
 from typing import Hashable
+
+from game_analyzer import State
+
 
 def test_state():
     @dataclass
@@ -8,7 +10,7 @@ def test_state():
         a: int
         b: list[list[int]]
         _c: int
-    
+
     matrix = [
         [0, 1, 2],
         [3, 4, 5],
@@ -26,6 +28,6 @@ def test_state():
     state4 = MyState(a=1, b=matrix, _c=2222222)
     assert isinstance(state, Hashable)
     assert isinstance(state1, Hashable)
-    assert hash(state1) != hash(state2)
-    assert hash(state1) != hash(state3)
-    assert hash(state1) == hash(state4)
+    assert state1.to_hash() != state2.to_hash()
+    assert state1.to_hash() != state3.to_hash()
+    assert state1.to_hash() == state4.to_hash()
