@@ -1,7 +1,11 @@
+from .state import State
 from .game import Game
-from .solver import solver
+from .result import Result
+from .solver import Solver
 
 __all__ = [
     "Game",
-    "solver"
+    "Solver",
+    "Result",
+    "State",
 ]

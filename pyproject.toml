@@ -23,3 +23,35 @@ dev = [
 
 [tool.setuptools]
 package-dir = {""="src"}
+
+[tool.ruff]
+line-length = 120
+indent-width = 4
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "D",        # doc-string
+    "ANN",      # annotation
+    "PGH",      # pgh
+    "TCH",      # tch
+    "I001",     # Import block is un-sorted or un-formatted
+    "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
+    "RUF"       # ruf
+]
+exclude = [
+    "tests/*",
+]
+fixable = ["ALL"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 5
+
+[tool.ruff.isort]
+force-single-line = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
