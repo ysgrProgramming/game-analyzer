@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from collections.abc import Generator
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Literal
 
@@ -12,11 +12,11 @@ class Game(ABC):
     default_eval: int = 0
 
     @abstractmethod
-    def find_next_states(self, state: State) -> Generator[State, None, None]:
+    def find_next_states(self, state: State) -> Iterable[State]:
         pass
 
     @abstractmethod
-    def find_mirror_states(self, state: State) -> Generator[State, None, None]:
+    def find_mirror_states(self, state: State) -> Iterable[State]:
         yield state
 
     @abstractmethod

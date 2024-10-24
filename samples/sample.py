@@ -1,16 +1,88 @@
 from __future__ import annotations
 
-import random
 from dataclasses import dataclass, field
-
-from game_analyzer import Game, Result, State
-from game_analyzer.util import EvalParamsConverter
-
+from abc import ABC, abstractmethod
+from collections.abc import Hashable, Iterable
+from typing import Literal
 import numpy as np
 
 import sys
+import pypyjit
+
 
 sys.setrecursionlimit(10**9)
+pypyjit.set_param("max_unroll_recursion=-1")
+
+
+def convert_iterable_to_hashable(variable: Hashable | Iterable[Iterable | Hashable]) -> Hashable:
+    if isinstance(variable, Hashable):
+        return variable
+    elif isinstance(variable, Iterable):  # noqa: RET505
+        return tuple(convert_iterable_to_hashable(item) for item in variable)  # type: ignore
+    else:
+        msg = "cannot convert to hashable"
+        raise TypeError(msg)
+
+
+def convert_dict_to_hashable(dictionary: dict[str, Hashable | Iterable]):
+    if not isinstance(dictionary, dict):
+        msg = "type must be dict"
+        raise TypeError(msg)
+    return tuple(convert_iterable_to_hashable(v) for v in dictionary.values())
+
+
+def convert_object_to_hashable(obj: Hashable | Iterable[Iterable | Hashable] | dict[str, Hashable | Iterable]):
+    if isinstance(obj, dict):
+        return convert_dict_to_hashable(obj)  # type: ignore
+    return convert_iterable_to_hashable(obj)
+
+
+class EvalParamsConverter:
+    def __init__(self, max_depth=1000):
+        self._max_depth = max_depth
+
+    def prev_eval(self, ev: int) -> int:
+        if abs(ev) == 1:
+            msg = "eval depth limit"
+            raise ValueError(msg)
+        return ev - np.sign(ev)
+
+    def next_eval(self, ev: int) -> int:
+        if abs(ev) == self._max_depth:
+            msg = "eval depth limit"
+            raise ValueError(msg)
+        return ev + np.sign(ev)
+
+    def eval_to_params(self, ev: int) -> tuple[int, int]:
+        result = np.sign(ev)
+        dist = self._max_depth - np.abs(ev)
+        return result, dist
+
+    def params_to_eval(self, result: int, depth: int) -> int:
+        if depth > self._max_depth:
+            msg = "depth must be less than _max_depth"
+            raise ValueError(msg)
+        return (self._max_depth - depth) * result
+
+
+@dataclass
+class Result:
+    hash_dict: dict[int, int]
+    eval_list: list[int]
+    max_depth: int
+    _ep_conv: EvalParamsConverter = None  # type: ignore
+
+    def __post_init__(self):
+        self._ep_conv = EvalParamsConverter(self.max_depth)
+
+    def state_to_params(self, state: State) -> tuple[int, int] | None:
+        state_hash = state.to_hash()
+        if state_hash in self.hash_dict:
+            idx = self.hash_dict[state_hash]
+            ev = self.eval_list[idx]
+            res, depth = self._ep_conv.eval_to_params(ev)
+            return res, depth
+        return None
 
 
 @dataclass
@@ -116,49 +188,24 @@ class Solver:
         return self._min_eval_list[idx] == self._max_eval_list[idx]
 
 
-class A:
-    def classify_next_patterns(self, now_state: np.ndarray) -> dict[int, int]:
-        next_hash_dict = {}
-        for next_state in self._game.find_next_states(now_state):
-            next_hash = self._game.state_to_hash(next_state)
-            if next_hash not in self.hash_dict:
-                continue
-            next_idx = self.hash_dict[next_hash]
-            eval = self.min_eval_list[next_idx]
-            if eval in next_hash_dict:
-                next_hash_dict[next_hash].append(eval)
-            else:
-                next_hash_dict[next_hash] = eval
-        return next_hash_dict
+@dataclass
+class Game(ABC):
+    init_state: State
+    default_eval: int = 0
 
-    def list_example(self, state: np.ndarray) -> list[np.ndarray]:
-        log_list = [state]
-        end_evalal = self.end_func(state)
-        if end_evalal is None:
-            next_hash_dict = self.classify_next_patterns(state)
-            if len(next_hash_dict) > 0:
-                min_eval = self.max_search_depth
-                state_list = []
-                for hash, eval in next_hash_dict.items():
-                    state = self.hash_to_state(hash)
-                    if eval < min_eval:
-                        state_list = []
-                        min_eval = eval
-                    if eval <= min_eval:
-                        state_list.append(state)
-                next_state = random.choice(state_list)
-                log_list.extend(self.list_example(next_state))
-        return log_list
+    @abstractmethod
+    def find_next_states(self, state: State) -> Iterable[State]:
+        pass
 
-    def print_example(self, state: np.ndarray):
-        log_list = self.list_example(state)
-        for state in log_list:
-            hash = self.state_to_hash(state)
-            idx = self.hash_dict[hash]
-            max_eval = self.max_eval_list[idx]
-            min_eval = self.min_eval_list[idx]
-            max_res, max_depth = self.eval_to_params(max_eval)
-            min_res, min_depth = self.eval_to_params(min_eval)
-            print(f"max: res = {max_res}, depth = {max_depth}")
-            print(f"min: res = {min_res}, depth = {min_depth}")
-            print(state, "\n")
+    @abstractmethod
+    def find_mirror_states(self, state: State) -> Iterable[State]:
+        yield state
+
+    @abstractmethod
+    def evaluate_state(self, state: State) -> Literal[-1, 0, 1] | None:
+        return None
+
+
+class State:
+    def to_hash(self):
+        return hash(convert_object_to_hashable(self.__dict__))

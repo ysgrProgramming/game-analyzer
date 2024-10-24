@@ -7,6 +7,9 @@ name = "pypi"
 numpy = "*"
 pydantic = "*"
 game-analyzer = {editable = true, path = "."}
+ruff = "*"
+jupyter = "*"
+notebook = "*"
 
 [dev-packages]
 ipykernel = "*"
