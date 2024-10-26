@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import random
 from dataclasses import dataclass, field
 
 from game_analyzer import Game, Result, State
 from game_analyzer.util import EvalParamsConverter
-
-import numpy as np
 
 import sys
 
@@ -114,51 +111,3 @@ class Solver:
 
     def _is_confirmed(self, idx: int):
         return self._min_eval_list[idx] == self._max_eval_list[idx]
-
-
-class A:
-    def classify_next_patterns(self, now_state: np.ndarray) -> dict[int, int]:
-        next_hash_dict = {}
-        for next_state in self._game.find_next_states(now_state):
-            next_hash = self._game.state_to_hash(next_state)
-            if next_hash not in self.hash_dict:
-                continue
-            next_idx = self.hash_dict[next_hash]
-            eval = self.min_eval_list[next_idx]
-            if eval in next_hash_dict:
-                next_hash_dict[next_hash].append(eval)
-            else:
-                next_hash_dict[next_hash] = eval
-        return next_hash_dict
-
-    def list_example(self, state: np.ndarray) -> list[np.ndarray]:
-        log_list = [state]
-        end_evalal = self.end_func(state)
-        if end_evalal is None:
-            next_hash_dict = self.classify_next_patterns(state)
-            if len(next_hash_dict) > 0:
-                min_eval = self.max_search_depth
-                state_list = []
-                for hash, eval in next_hash_dict.items():
-                    state = self.hash_to_state(hash)
-                    if eval < min_eval:
-                        state_list = []
-                        min_eval = eval
-                    if eval <= min_eval:
-                        state_list.append(state)
-                next_state = random.choice(state_list)
-                log_list.extend(self.list_example(next_state))
-        return log_list
-
-    def print_example(self, state: np.ndarray):
-        log_list = self.list_example(state)
-        for state in log_list:
-            hash = self.state_to_hash(state)
-            idx = self.hash_dict[hash]
-            max_eval = self.max_eval_list[idx]
-            min_eval = self.min_eval_list[idx]
-            max_res, max_depth = self.eval_to_params(max_eval)
-            min_res, min_depth = self.eval_to_params(min_eval)
-            print(f"max: res = {max_res}, depth = {max_depth}")
-            print(f"min: res = {min_res}, depth = {min_depth}")
-            print(state, "\n")
