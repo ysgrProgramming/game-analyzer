@@ -43,7 +43,7 @@ class EvalParamsConverter:
 
     def eval_to_params(self, ev: int) -> tuple[int, int]:
         result = np.sign(ev)
-        dist = self._max_depth - np.abs(ev)
+        dist = self._max_depth - abs(ev)
         return result, dist
 
     def params_to_eval(self, result: int, depth: int) -> int:
