@@ -1,4 +1,3 @@
-import numpy as np
 from collections.abc import Hashable, Iterable
 
 
@@ -33,16 +32,18 @@ class EvalParamsConverter:
         if abs(ev) == 1:
             msg = "eval depth limit"
             raise ValueError(msg)
-        return ev - np.sign(ev)
+        result = 1 if ev > 0 else (-1 if ev < 0 else 0)
+        return ev - result
 
     def next_eval(self, ev: int) -> int:
         if abs(ev) == self._max_depth:
             msg = "eval depth limit"
             raise ValueError(msg)
-        return ev + np.sign(ev)
+        result = 1 if ev > 0 else (-1 if ev < 0 else 0)
+        return ev + result
 
     def eval_to_params(self, ev: int) -> tuple[int, int]:
-        result = np.sign(ev)
+        result = 1 if ev > 0 else (-1 if ev < 0 else 0)
         dist = self._max_depth - abs(ev)
         return result, dist
 

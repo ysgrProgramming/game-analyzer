@@ -1,13 +1,15 @@
 from dataclasses import dataclass
+from array import array
 from game_analyzer.util import EvalParamsConverter
 from game_analyzer import State
-
 
 @dataclass
 class Result:
     hash_dict: dict[int, int]
-    eval_list: list[int]
+    eval_list: array
     max_depth: int
+    sgg_time: float
+    ra_time: float
     _ep_conv: EvalParamsConverter = None  # type: ignore
 
     def __post_init__(self):
