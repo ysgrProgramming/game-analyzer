@@ -19,7 +19,7 @@ def sign(x: int) -> int:
 
 @dataclass
 class Solver:
-    max_depth: int = 10000
+    _max_depth: int = 255
     _game: Game = None  # type: ignore
     _hash_dict: dict[int, int] = field(default_factory=dict)
     _eval_list: array = field(default_factory=lambda: array("i"))
@@ -44,7 +44,7 @@ class Solver:
         end_solve = time.time()
         sgg_time = start_ra_time - start_sgg_time
         ra_time = end_solve - start_ra_time
-        return Result(hash_dict=self._hash_dict, eval_list=self._eval_list, max_depth=self.max_depth,
+        return Result(hash_dict=self._hash_dict, eval_list=self._eval_list, max_depth=self._max_depth,
                       sgg_time=sgg_time, ra_time=ra_time)
 
     def _search_game_graph(self, state: State, idx: int) -> None:
@@ -56,13 +56,13 @@ class Solver:
                 next_idx = self._register_state(next_state)
                 next_res = self._game.evaluate_state(next_state)
                 if next_res is not None:
-                    self._eval_list[next_idx] = next_res * self.max_depth
+                    self._eval_list[next_idx] = next_res * self._max_depth
                 else:
                     self._search_game_graph(next_state, next_idx)
             self._child_count_list[idx] += 1
             self._graph_inv[next_idx].append(idx)
         if self._child_count_list[idx] == 0:
-            self._eval_list[idx] = self._game.default_eval * self.max_depth
+            self._eval_list[idx] = self._game.default_eval * self._max_depth
 
     def _retrograde_analyze(self) -> None:
         for idx in range(self.node_size):
@@ -84,13 +84,16 @@ class Solver:
                 msg = "mirror func error"
                 raise ValueError(msg)
             self._hash_dict[state_hash] = idx
-        self._eval_list.append(-1 * self.max_depth)
+        self._eval_list.append(-1 * self._max_depth)
         self._graph_inv.append([])
         self._child_count_list.append(0)
         return idx
 
     def _confirm_eval(self, idx: int):  # noqa: C901
         prev_ev = -self._eval_list[idx] + sign(self._eval_list[idx])
+        if prev_ev == 0 and self._eval_list[idx] != 0:
+            self._update_max_depth(self._max_depth*2)
+            prev_ev = -self._eval_list[idx] + sign(self._eval_list[idx])
         for prev_idx in self._graph_inv[idx]:
             if self._child_count_list[prev_idx] == 0:
                 continue
@@ -99,13 +102,19 @@ class Solver:
                 self._eval_list[prev_idx] = prev_ev
                 if prev_ev > 0:
                     self._add_to_queue(prev_idx)
-                    self._child_count_list[prev_idx] = 0
             if self._child_count_list[prev_idx] == 0:
                 self._confirm_eval(prev_idx)
+                prev_ev = -self._eval_list[idx] + sign(self._eval_list[idx])
         self._graph_inv[idx].clear()
 
     def _add_to_queue(self, idx: int):
-        depth = self.max_depth - abs(self._eval_list[idx])
+        depth = self._max_depth - abs(self._eval_list[idx])
         if len(self._queue_list) < depth+1:
             self._queue_list.extend([[] for _ in range(depth+1-len(self._queue_list))])
         self._queue_list[depth].append(idx)
+
+    def _update_max_depth(self, new_max_depth: int):
+        sub = new_max_depth - self._max_depth
+        for idx in range(self.node_size):
+            self._eval_list[idx] += sign(self._eval_list[idx]) * sub
+        self._max_depth = new_max_depth
