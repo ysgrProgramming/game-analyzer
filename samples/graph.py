@@ -227,37 +227,42 @@ class Result:
 
 
 @dataclass
-class StonesState(State):
-    stones: int
+class GraphState(State):
+    position: int
+    confirm: bool
+    turn: Literal[0, 1]
 
 
-class Stones(Game):
-    def __init__(self, init_stones, hand_list):
-        self.init_state = StonesState(stones=init_stones)
-        self.hand_list = hand_list
-        self.default_eval = -1
+class Graph(Game):
+    def __init__(self, point_list, edge_list):
+        self.point_list = point_list
+        self.graph = [[] for _ in range(len(point_list))]
+        for u, v in edge_list:
+            self.graph[u - 1].append(v - 1)
+        self.init_state = GraphState(position=0, confirm=False, turn=0)
 
     def find_next_states(self, state):
-        for hand in self.hand_list:
-            next_stones = state.stones - hand
-            if next_stones >= 0:
-                yield StonesState(stones=next_stones)
+        for node in self.graph[state.position]:
+            yield GraphState(position=node, confirm=False, turn=1 - state.turn)
+        yield GraphState(position=state.position, confirm=True, turn=1 - state.turn)
 
     def find_mirror_states(self, state):
         yield state
 
     def evaluate_state(self, state):
+        if state.confirm:
+            point = self.point_list[state.position]
+            if state.turn == 0:
+                return point
+            return -point
         return None
 
 
-n, k = map(int, input().split())
-a_list = list(map(int, input().split()))
-stones = Stones(init_stones=k, hand_list=a_list)
+n, m = map(int, input().split())
+x_list = list(map(int, input().split()))
+edge_list = [tuple(map(int, input().split())) for _ in range(m)]
+graph = Graph(point_list=x_list, edge_list=edge_list)
 solver = Solver()
-result = solver.solve(stones)
+result = solver.solve(graph)
 
-ev, _ = result.state_to_params(stones.init_state)
-if ev == 1:
-    print("First")
-else:
-    print("Second")
+print(result.state_to_params(graph.init_state)[0])
