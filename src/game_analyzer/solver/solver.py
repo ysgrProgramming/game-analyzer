@@ -23,7 +23,7 @@ class Solver:
     _depth_list: array = field(default_factory=lambda: array("i"))
     _graph_inv: list[list[int]] = field(default_factory=list)
     _child_count_list: array = field(default_factory=lambda: array("I"))
-    _queue_dict: dict[tuple[int, int], list[int]] = field(default_factory=dict)
+    _queue_dict: dict[tuple[int, int], array] = field(default_factory=dict)
     _key_list: list[tuple[int, int]] = field(default_factory=list)
 
     @property
@@ -134,9 +134,9 @@ class Solver:
     def _add_to_queue(self, idx: int):
         ev, depth = self._eval_list[idx], self._depth_list[idx]
         key = (-ev, ev * depth)
-        lst = self._queue_dict.get(key)
-        if key not in self._queue_dict:
-            lst = []
-            self._queue_dict[key] = lst
+        arr = self._queue_dict.get(key)
+        if arr is None:
+            arr = array("I")
+            self._queue_dict[key] = arr
             heappush(self._key_list, key)
-        self._queue_dict[key].append(idx)
+        arr.append(idx)
