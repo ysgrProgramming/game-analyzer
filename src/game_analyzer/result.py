@@ -1,5 +1,6 @@
-from dataclasses import dataclass
 from array import array
+from dataclasses import dataclass
+
 from game_analyzer import State
 
 

@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-
-from game_analyzer import Game, Result, State
-
-from heapq import heappush, heappop
-from array import array
-import time
 import sys
+import time
+from array import array
+from dataclasses import dataclass
+from dataclasses import field
+from heapq import heappop
+from heapq import heappush
+
+from game_analyzer import Game
+from game_analyzer import Result
+from game_analyzer import State
 
 sys.setrecursionlimit(10**9)
 
@@ -77,7 +80,7 @@ class Solver:
                 next_res = evaluate_state(next_state)
                 if next_res is not None:
                     eval_list[next_idx] = next_res
-                    depth_list[idx] = 0
+                    depth_list[next_idx] = 0
                 else:
                     self._search_game_graph(next_state, next_idx)
             child_count_list[idx] += 1
