@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from tests.solver.problems.stones import CASE_LIST
 
 
-@dataclass
+@dataclass(slots=True)
 class StonesState(State):
     stones: int
 

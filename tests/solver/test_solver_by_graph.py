@@ -12,7 +12,7 @@ from game_analyzer import Solver
 from game_analyzer import State
 
 
-@dataclass
+@dataclass(slots=True)
 class GraphState(State):
     position: int
     confirm: bool

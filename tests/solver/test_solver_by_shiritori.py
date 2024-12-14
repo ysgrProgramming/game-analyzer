@@ -4,7 +4,7 @@ from typing import Literal
 from problems.shiritori import CASE_LIST
 
 
-@dataclass
+@dataclass(slots=True)
 class ShiritoriState(State):
     last: int
 
