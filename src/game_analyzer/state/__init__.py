@@ -1,5 +1,3 @@
-from .state import State
+from .state import State, HashArray
 
-__all__ = [
-    "State",
-]
+__all__ = ["State", "HashArray"]

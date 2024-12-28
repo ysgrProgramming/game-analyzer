@@ -36,7 +36,8 @@ ignore = [
     "PGH",      # pgh
     "TCH",      # tch
     "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
-    "RUF"       # ruf
+    "RUF",      # ruf
+    "S311",     # Standard pseudo-random generators are not suitable for cryptographic purposes
 ]
 exclude = [
     "tests/*",

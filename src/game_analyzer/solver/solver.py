@@ -44,6 +44,7 @@ class Solver:
             hash_dict=self._hash_dict,
             eval_list=self._eval_list,
             depth_list=self._depth_list,
+            zobrist_map=self._game.init_state.get_zobrist_map(),
             sgg_time=sgg_time,
             ra_time=ra_time,
         )

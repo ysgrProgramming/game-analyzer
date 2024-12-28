@@ -13,8 +13,7 @@ class Game(ABC):
     default_eval: int = 0
 
     @abstractmethod
-    def find_next_states(self, state: State) -> Iterable[State]:
-        pass
+    def find_next_states(self, state: State) -> Iterable[State]: ...
 
     @abstractmethod
     def find_mirror_states(self, state: State) -> Iterable[State]:
