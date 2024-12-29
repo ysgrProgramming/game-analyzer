@@ -8,6 +8,8 @@ class State:
     _zobrist_map: ClassVar[dict] = {}
     _rand_bit_size: ClassVar[int] = 64
 
+    def __post_init__(): ...
+
     def to_hash(self) -> int:
         state_dict = self.to_dict()
         if self._zobrist_map == {}:
