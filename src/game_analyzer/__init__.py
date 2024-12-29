@@ -1,4 +1,4 @@
-from .state import HashArray, State
+from .state import HashArray, State  # noqa: I001
 from .game import Game
 from .result import Result
 from .solver import Solver
