@@ -3,14 +3,10 @@ from __future__ import annotations
 import sys
 import time
 from array import array
-from dataclasses import dataclass
-from dataclasses import field
-from heapq import heappop
-from heapq import heappush
+from dataclasses import dataclass, field
+from heapq import heappop, heappush
 
-from game_analyzer import Game
-from game_analyzer import Result
-from game_analyzer import State
+from game_analyzer import Game, Result, State
 
 sys.setrecursionlimit(10**9)
 
@@ -52,7 +48,7 @@ class Solver:
         idx = self.node_size
         hash_dict = self._hash_dict
         for mirror_state in self._game.find_mirror_states(state):
-            state_hash: int = mirror_state.to_hash()  # type: ignore
+            state_hash = mirror_state.digest
             if state_hash in hash_dict and hash_dict[state_hash] != idx:
                 msg = "mirror func error"
                 raise ValueError(msg)
@@ -72,7 +68,7 @@ class Solver:
         evaluate_state = self._game.evaluate_state
 
         for next_state in self._game.find_next_states(state):
-            next_hash = next_state.to_hash()
+            next_hash = next_state.digest
             if next_hash in hash_dict:
                 next_idx = hash_dict[next_hash]
             else:

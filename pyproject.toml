@@ -39,18 +39,12 @@ ignore = [
     "RUF",      # ruf
     "S311",     # Standard pseudo-random generators are not suitable for cryptographic purposes
     "TRY003",   # Avoid specifying long messages outside the exception class
-    "EM001",    # Exception must not use a string literal, assign to variable first
+    "EM101",    # Exception must not use a string literal, assign to variable first
 ]
 exclude = [
     "tests/*",
 ]
 fixable = ["ALL"]
-
-[tool.ruff.lint.mccabe]
-max-complexity = 5
-
-[tool.ruff.isort]
-force-single-line = true
 
 [tool.ruff.format]
 quote-style = "double"

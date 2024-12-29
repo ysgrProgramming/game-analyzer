@@ -1,7 +1,5 @@
 import random
-from collections.abc import Callable
-from collections.abc import Hashable
-from collections.abc import MutableSequence
+from collections.abc import Callable, Hashable, MutableSequence
 
 
 class HashArray(MutableSequence):
@@ -17,7 +15,7 @@ class HashArray(MutableSequence):
         if digest_map is None:
             digest_map = {}
         if isinstance(array, HashArray):
-            self._inner = array._inner
+            self._inner = array._inner  # noqa: SLF001
         else:
             self._inner = array
         self._callback = callback
@@ -27,7 +25,7 @@ class HashArray(MutableSequence):
 
         for i in range(len(self)):
             value = self._inner[i]
-            self.digest_value(i, value)
+            self._digest_value(i, value)
 
     def __len__(self) -> int:
         return len(self._inner)
@@ -38,18 +36,18 @@ class HashArray(MutableSequence):
     def __setitem__(self, index, value):
         if index < 0:
             index += len(self._inner)
-        digest = self.get_digest(index)
-        self.add_digest(digest)
+        digest = self._get_digest(index)
+        self._add_digest(digest)
         self._inner[index] = value
-        self.digest_value(index, value)
+        self._digest_value(index, value)
 
     def __delitem__(self, index):
         if index < 0:
             index += len(self._inner)
         for i in range(index, len(self) - 1):
             self[i] = self[i + 1]
-        digest = self.get_digest(len(self) - 1)
-        self.add_digest(digest)
+        digest = self._get_digest(len(self) - 1)
+        self._add_digest(digest)
         del self._inner[len(self) - 1]
 
     def insert(self, index, value):
@@ -65,35 +63,34 @@ class HashArray(MutableSequence):
     def append(self, value):
         index = len(self)
         self._inner.append(value)
-        self.digest_value(index, value)
+        self._digest_value(index, value)
 
     @property
     def digest(self):
         return self._digest
 
-    def get_digest(self, index):
+    def _get_digest(self, index):
         value = self._inner[index]
-        if isinstance(value, HashArray):
-            return value.digest
         if isinstance(value, Hashable):
             return self._digest_map[index][value]
-        else:
-            raise TypeError("Value must be hasharray or digestable")
+        if isinstance(value, HashArray):
+            return value.digest
+        raise TypeError("Value must be hasharray or digestable")
 
-    def digest_value(self, index, value):
+    def _digest_value(self, index, value):
         if index not in self._digest_map:
             self._digest_map[index] = {}
         if isinstance(value, Hashable):
             if value not in self._digest_map[index]:
                 self._digest_map[index][value] = random.randrange(1 << self._bit_size)
-            self.add_digest(self._digest_map[index][value])
+            self._add_digest(self._digest_map[index][value])
         elif isinstance(value, MutableSequence):
-            value = HashArray(value, self.add_digest, self._digest_map[index])
+            value = HashArray(value, self._add_digest, self._digest_map[index])
             self._inner[index] = value
         else:
             raise TypeError("Value must be mutable-sequence or digestable")
 
-    def add_digest(self, value: int):
+    def _add_digest(self, value: int):
         self._digest ^= value
         if self._callback is not None:
             self._callback(value)
