@@ -40,6 +40,12 @@ CASE7 = {
 }
 CASE7_ANSWER = -1
 
+CASE8 = {
+    "init_stones": 100000,
+    "hand_list": list(range(1, 100)),
+}
+CASE8_ANSWER = -1
+
 CASE_LIST = [
     [CASE1, CASE1_ANSWER],
     [CASE2, CASE2_ANSWER],
@@ -48,4 +54,5 @@ CASE_LIST = [
     [CASE5, CASE5_ANSWER],
     [CASE6, CASE6_ANSWER],
     [CASE7, CASE7_ANSWER],
+    [CASE8, CASE8_ANSWER],
 ]

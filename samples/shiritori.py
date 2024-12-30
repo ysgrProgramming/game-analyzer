@@ -5,10 +5,13 @@ import sys
 import time
 from abc import ABC, abstractmethod
 from array import array
+from collections import defaultdict
 from collections.abc import Callable, Hashable, Iterable, MutableSequence
 from dataclasses import dataclass, field
 from heapq import heappop, heappush
 from typing import ClassVar, Literal
+
+sys.setrecursionlimit(10**7)
 
 
 class HashArray(MutableSequence):
@@ -183,9 +186,6 @@ class Game(ABC):
         return None
 
 
-sys.setrecursionlimit(10**9)
-
-
 @dataclass
 class Solver:
     _game: Game = None  # type: ignore
@@ -331,28 +331,31 @@ class Result:
 
 @dataclass
 class ShiritoriState(State):
-    last: int
+    last: Literal[-1] | str
 
 
 class Shiritori(Game):
     def __init__(self, words):
         self.words = words
+        self.word_dict = {}
+        for word in words:
+            if word not in self.word_dict:
+                self.word_dict[word[:3]] = set()
+            self.word_dict[word[:3]].add(word[-3:])
         self.default_eval = 1
         self.init_state = ShiritoriState(last=-1)
 
     def find_next_states(self, state):
         if state.last == -1:
             for i in range(len(self.words)):
-                state.last = i
+                state.last = self.words[i][-3:]
                 yield state
-            state.last = -1
         else:
-            buf = state.last
-            for i in range(len(self.words)):
-                if self.words[state.last][-3:] == self.words[i][:3]:
-                    state.last = i
-                    yield state
-            state.last = buf
+            if state.last not in self.word_dict:
+                return
+            for word in self.word_dict[state.last]:
+                state.last = word
+                yield state
 
     def find_mirror_states(self, state):
         yield state
@@ -367,7 +370,7 @@ shiritori = Shiritori(words=words)
 solver = Solver()
 result = solver.solve(shiritori)
 for i in range(n):
-    state = ShiritoriState(last=i)
+    state = ShiritoriState(last=shiritori.words[i][-3:])
     ev, _ = result.state_to_params(state)
     if ev == 1:
         print("Takahashi")
