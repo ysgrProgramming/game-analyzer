@@ -28,9 +28,19 @@ class Graph(Game):
         self.init_state = GraphState(position=0, confirm=False, turn=0)
 
     def find_next_states(self, state):
-        for node in self.graph[state.position]:
-            yield GraphState(position=node, confirm=False, turn=1 - state.turn)
-        yield GraphState(position=state.position, confirm=True, turn=1 - state.turn)
+        position = state.position
+        turn = state.turn
+        next_turn = 1 - state.turn
+
+        state.turn = next_turn
+        for node in self.graph[position]:
+            state.position = node
+            yield state
+        state.position = position
+        state.confirm = True
+        yield state
+        state.confirm = False
+        state.turn = turn
 
     def find_mirror_states(self, state):
         yield state

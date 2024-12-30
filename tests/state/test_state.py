@@ -100,6 +100,21 @@ def test_same_values_list_only(fixed_random_seed):
     assert s1.digest != s3.digest
 
 
+def test_change_hashable_list_only(fixed_random_seed):
+    @dataclass
+    class MyStateMixed(State):
+        data: list
+
+    st = MyStateMixed([1, 2, 3])
+    digest1 = st.digest
+    st.data[0] = 10
+    digest2 = st.digest
+    st.data[0] = 1
+    digest3 = st.digest
+    assert digest1 != digest2
+    assert digest1 == digest3
+
+
 def test_set_delete_list_only(fixed_random_seed):
     @dataclass
     class MyStateListOnly(State):
@@ -187,3 +202,20 @@ def test_set_delete_mixed(fixed_random_seed):
     assert digest1 != digest2
     assert digest1 == digest3
     assert digest2 == digest4
+
+
+def test_different_subclass(fixed_random_seed):
+    @dataclass
+    class MyState1(State):
+        x: int
+        data: list
+
+    @dataclass
+    class MyState2(State):
+        x: int
+        data: list
+
+    st1 = MyState1(10, [1, 2, 3])
+    st2 = MyState2(10, [1, 2, 3])
+
+    assert st1.digest != st2.digest

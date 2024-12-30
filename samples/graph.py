@@ -1,65 +1,168 @@
-from __future__ import annotations
+from __future__ import annotations  # noqa: INP001
 
 import random
 import sys
 import time
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from array import array
-from collections.abc import Hashable
-from collections.abc import Iterable
-from dataclasses import dataclass
-from dataclasses import field
-from heapq import heappop
-from heapq import heappush
-from typing import ClassVar
-from typing import Literal
+from collections.abc import Callable, Hashable, Iterable, MutableSequence
+from dataclasses import dataclass, field
+from heapq import heappop, heappush
+from typing import ClassVar, Literal
 
 
+class HashArray(MutableSequence):
+    __hash__ = None  # type: ignore
+
+    def __init__(
+        self,
+        array: MutableSequence,
+        callback: Callable[[int], None] | None = None,
+        digest_map: dict | None = None,
+        bit_size: int = 60,
+    ):
+        if digest_map is None:
+            digest_map = {}
+        if isinstance(array, HashArray):
+            self._inner = array._inner  # noqa: SLF001
+        else:
+            self._inner = array
+        self._callback = callback
+        self._digest_map = digest_map
+        self._bit_size = bit_size
+        self._digest: int = 0
+
+        for i in range(len(self)):
+            value = self._inner[i]
+            self._digest_value(i, value)
+
+    def __len__(self) -> int:
+        return len(self._inner)
+
+    def __getitem__(self, index):
+        return self._inner[index]
+
+    def __setitem__(self, index, value):
+        if index < 0:
+            index += len(self._inner)
+        digest = self._get_digest(index)
+        self._add_digest(digest)
+        self._inner[index] = value
+        self._digest_value(index, value)
+
+    def __delitem__(self, index):
+        if index < 0:
+            index += len(self._inner)
+        for i in range(index, len(self) - 1):
+            self[i] = self[i + 1]
+        digest = self._get_digest(len(self) - 1)
+        self._add_digest(digest)
+        del self._inner[len(self) - 1]
+
+    def insert(self, index, value):
+        if index < 0:
+            index += len(self._inner)
+        buf = value
+        for i in range(index, len(self)):
+            v = self[i]
+            self[i] = buf
+            buf = v
+        self.append(buf)
+
+    def append(self, value):
+        index = len(self)
+        self._inner.append(value)
+        self._digest_value(index, value)
+
+    @property
+    def digest(self):
+        return self._digest
+
+    def _get_digest(self, index):
+        value = self._inner[index]
+        if isinstance(value, Hashable):
+            return self._digest_map[index][value]
+        if isinstance(value, HashArray):
+            return value.digest
+        raise TypeError("Value must be hasharray or digestable")
+
+    def _digest_value(self, index, value):
+        if index not in self._digest_map:
+            self._digest_map[index] = {}
+        if isinstance(value, Hashable):
+            if value not in self._digest_map[index]:
+                self._digest_map[index][value] = random.randrange(1 << self._bit_size)
+            self._add_digest(self._digest_map[index][value])
+        elif isinstance(value, MutableSequence):
+            value = HashArray(value, self._add_digest, self._digest_map[index])
+            self._inner[index] = value
+        else:
+            raise TypeError("Value must be mutable-sequence or digestable")
+
+    def _add_digest(self, value: int):
+        self._digest ^= value
+        if self._callback is not None:
+            self._callback(value)
+
+    def __repr__(self):
+        return self._inner.__repr__()
+
+
+@dataclass
 class State:
-    _zobrist_map: ClassVar[dict] = {}
-    _rand_bit_size: ClassVar[int] = 64
+    __hash__ = None  # type: ignore
+    _digest_map: ClassVar[dict] = {}
+    _bit_size: ClassVar[int] = 60
 
-    def to_hash(self) -> int:
-        state_dict = self.to_dict()
-        if self._zobrist_map == {}:
-            self._init_zobrist_map(state_dict, self._zobrist_map)
-        h = 0
-        for k, v in state_dict.items():
-            h ^= self._get_zobrist_hash(v, self._zobrist_map[k])
-        return h
+    def __init_subclass__(cls) -> None:
+        cls._digest_map = {}
+        cls._bit_size = 60
 
-    def to_dict(self) -> dict:
-        return self.__dict__
+    def __setattr__(self, name: str, value) -> None:
+        if not name.startswith("_"):
+            if hasattr(self, name):
+                digest = self._get_digest(name)
+                self._add_digest(digest)
+            super().__setattr__(name, value)
+            self._digest_value(name, value)
+        else:
+            super().__setattr__(name, value)
 
-    def _get_zobrist_hash(self, obj, mapping) -> int:  # noqa: C901
-        if isinstance(obj, Hashable):
-            if obj not in mapping:
-                mapping[obj] = random.randrange(1 << self._rand_bit_size)  # noqa: S311
-            return mapping[obj]
-        if isinstance(obj, Iterable):
-            h = 0
-            for v, m in zip(obj, mapping, strict=True):
-                h ^= self._get_zobrist_hash(v, m)
-            return h
-        msg = "Unsupported type for zobrist hashing"
-        raise TypeError(msg)
+    def __delattr__(self, name: str) -> None:
+        if not name.startswith("_"):
+            digest = self._get_digest(name)
+            self._add_digest(digest)
+        super().__delattr__(name)
 
-    def _init_zobrist_map(self, obj, mapping):  # noqa: C901
-        if isinstance(obj, Hashable):
-            return
-        if isinstance(obj, dict):
-            for k, v in obj.items():
-                mapping[k] = {}
-                self._init_zobrist_map(v, mapping[k])
-            return
-        if isinstance(obj, Iterable):
-            mapping = [{} for _ in range(len(obj))]  # type: ignore
-            for v, m in zip(obj, mapping, strict=True):
-                self._init_zobrist_map(v, m)
-            return
-        msg = "Unsupported type for zobrist hashing"
-        raise TypeError(msg)
+    def _get_digest(self, name: str):
+        value = getattr(self, name)
+        if isinstance(value, Hashable):
+            return self._digest_map[name][value]
+        if isinstance(value, HashArray):
+            return value.digest
+        raise TypeError("Value must be hasharray or digestable")
+
+    def _digest_value(self, name: str, value):
+        if name not in self._digest_map:
+            self._digest_map[name] = {}
+        if isinstance(value, Hashable):
+            if value not in self._digest_map[name]:
+                self._digest_map[name][value] = random.randrange(1 << self._bit_size)
+            self._add_digest(self._digest_map[name][value])
+        elif isinstance(value, MutableSequence):
+            value = HashArray(value, self._add_digest, self._digest_map[name])
+            super().__setattr__(name, value)
+        else:
+            raise TypeError("Value must be mutable-sequence or digestable")
+
+    def _add_digest(self, value: int):
+        if not hasattr(self, "_digest"):
+            self._digest = 0
+        self._digest ^= value
+
+    @property
+    def digest(self):
+        return self._digest
 
 
 @dataclass
@@ -91,7 +194,7 @@ class Solver:
     _depth_list: array = field(default_factory=lambda: array("i"))
     _graph_inv: list[list[int]] = field(default_factory=list)
     _child_count_list: array = field(default_factory=lambda: array("I"))
-    _queue_dict: dict[tuple[int, int], list[int]] = field(default_factory=dict)
+    _queue_dict: dict[tuple[int, int], array] = field(default_factory=dict)
     _key_list: list[tuple[int, int]] = field(default_factory=list)
 
     @property
@@ -120,7 +223,7 @@ class Solver:
         idx = self.node_size
         hash_dict = self._hash_dict
         for mirror_state in self._game.find_mirror_states(state):
-            state_hash: int = mirror_state.to_hash()  # type: ignore
+            state_hash = mirror_state.digest
             if state_hash in hash_dict and hash_dict[state_hash] != idx:
                 msg = "mirror func error"
                 raise ValueError(msg)
@@ -140,7 +243,7 @@ class Solver:
         evaluate_state = self._game.evaluate_state
 
         for next_state in self._game.find_next_states(state):
-            next_hash = next_state.to_hash()
+            next_hash = next_state.digest
             if next_hash in hash_dict:
                 next_idx = hash_dict[next_hash]
             else:
@@ -202,12 +305,12 @@ class Solver:
     def _add_to_queue(self, idx: int):
         ev, depth = self._eval_list[idx], self._depth_list[idx]
         key = (-ev, ev * depth)
-        lst = self._queue_dict.get(key)
-        if key not in self._queue_dict:
-            lst = []
-            self._queue_dict[key] = lst
+        arr = self._queue_dict.get(key)
+        if arr is None:
+            arr = array("I")
+            self._queue_dict[key] = arr
             heappush(self._key_list, key)
-        self._queue_dict[key].append(idx)
+        arr.append(idx)
 
 
 @dataclass
@@ -219,7 +322,7 @@ class Result:
     ra_time: float
 
     def state_to_params(self, state: State) -> tuple[int, int] | None:
-        state_hash = state.to_hash()
+        state_hash = state.digest
         if state_hash in self.hash_dict:
             idx = self.hash_dict[state_hash]
             return self.eval_list[idx], self.depth_list[idx]
@@ -242,9 +345,19 @@ class Graph(Game):
         self.init_state = GraphState(position=0, confirm=False, turn=0)
 
     def find_next_states(self, state):
-        for node in self.graph[state.position]:
-            yield GraphState(position=node, confirm=False, turn=1 - state.turn)
-        yield GraphState(position=state.position, confirm=True, turn=1 - state.turn)
+        position = state.position
+        turn = state.turn
+        next_turn = 1 - state.turn
+
+        state.turn = next_turn
+        for node in self.graph[position]:
+            state.position = node
+            yield state
+        state.position = position
+        state.confirm = True
+        yield state
+        state.confirm = False
+        state.turn = turn
 
     def find_mirror_states(self, state):
         yield state

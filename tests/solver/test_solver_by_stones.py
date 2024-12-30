@@ -15,10 +15,13 @@ class Stones(Game):
         self.default_eval = -1
 
     def find_next_states(self, state):
+        stones = state.stones
         for hand in self.hand_list:
-            next_stones = state.stones - hand
+            next_stones = stones - hand
             if next_stones >= 0:
-                yield StonesState(stones=next_stones)
+                state.stones = next_stones
+                yield state
+        state.stones = stones
 
     def find_mirror_states(self, state):
         yield state

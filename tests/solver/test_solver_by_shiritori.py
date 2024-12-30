@@ -18,11 +18,16 @@ class Shiritori(Game):
     def find_next_states(self, state):
         if state.last == -1:
             for i in range(len(self.words)):
-                yield ShiritoriState(last=i)
+                state.last = i
+                yield state
+            state.last = -1
         else:
+            buf = state.last
             for i in range(len(self.words)):
                 if self.words[state.last][-3:] == self.words[i][:3]:
-                    yield ShiritoriState(last=i)
+                    state.last = i
+                    yield state
+            state.last = buf
 
     def find_mirror_states(self, state):
         yield state
