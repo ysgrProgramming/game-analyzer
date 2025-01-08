@@ -199,7 +199,7 @@ class Solver:
                 if child_count_list[prev_idx] == 0:
                     todo_idx.append(prev_idx)
             child_count_list[idx] = 0
-            self._graph_inv[idx].clear()
+            self._graph_inv[idx] = []
 
     def _is_better_eval(self, ev: int, depth: int, idx: int):
         if self._depth_list[idx] == -1:
@@ -237,23 +237,29 @@ class Result:
 
 @dataclass(slots=True)
 class ShiritoriState(State):
-    last: int
+    last: Literal[-1] | str
 
 
 class Shiritori(Game):
     def __init__(self, words):
         self.words = words
-        self.default_eval = 1
+        self.word_dict = {}
+        for word in words:
+            if word[:3] not in self.word_dict:
+                self.word_dict[word[:3]] = set()
+            self.word_dict[word[:3]].add(word[-3:])
+        self.default_eval = -1
         self.init_state = ShiritoriState(last=-1)
 
     def find_next_states(self, state):
         if state.last == -1:
-            for i in range(len(self.words)):
-                yield ShiritoriState(last=i)
+            for word in self.words:
+                yield ShiritoriState(last=word[-3:])
         else:
-            for i in range(len(self.words)):
-                if self.words[state.last][-3:] == self.words[i][:3]:
-                    yield ShiritoriState(last=i)
+            if state.last not in self.word_dict:
+                return
+            for word in self.word_dict[state.last]:
+                yield ShiritoriState(last=word[:])
 
     def find_mirror_states(self, state):
         yield state
@@ -262,15 +268,17 @@ class Shiritori(Game):
         return None
 
 
-n = int(input())
-words = [input() for _ in range(n)]
+# n = int(input())
+# words = [input() for _ in range(n)]
+n = 2
+words = ["aaa", "aaaddd"]
 shiritori = Shiritori(words=words)
 solver = Solver()
 result = solver.solve(shiritori)
-for i in range(n):
-    state = ShiritoriState(last=i)
+for word in words:
+    state = ShiritoriState(word[-3:])
     ev, _ = result.state_to_params(state)
-    if ev == 1:
+    if ev == -1:
         print("Takahashi")
     elif ev == 0:
         print("Draw")

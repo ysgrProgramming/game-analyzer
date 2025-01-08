@@ -129,7 +129,7 @@ class Solver:
                 if child_count_list[prev_idx] == 0:
                     todo_idx.append(prev_idx)
             child_count_list[idx] = 0
-            self._graph_inv[idx].clear()
+            self._graph_inv[idx] = []
 
     def _is_better_eval(self, ev: int, depth: int, idx: int):
         if self._depth_list[idx] == -1:
