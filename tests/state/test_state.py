@@ -2,7 +2,7 @@ import pytest
 import random
 from dataclasses import dataclass
 
-from game_analyzer import State
+from game_analyzer import HashState
 
 
 @pytest.fixture
@@ -17,7 +17,7 @@ def fixed_random_seed():
 
 def test_init_hashable_only(fixed_random_seed):
     @dataclass
-    class MyStateHashableOnly(State):
+    class MyStateHashableOnly(HashState):
         x: int
 
     st = MyStateHashableOnly(10)
@@ -26,7 +26,7 @@ def test_init_hashable_only(fixed_random_seed):
 
 def test_same_values_hashable_only(fixed_random_seed):
     @dataclass
-    class MyStateHashableOnly(State):
+    class MyStateHashableOnly(HashState):
         x: int
 
     s1 = MyStateHashableOnly(10)
@@ -38,7 +38,7 @@ def test_same_values_hashable_only(fixed_random_seed):
 
 def test_element_change_hashable_only(fixed_random_seed):
     @dataclass
-    class MyStateHashableOnly(State):
+    class MyStateHashableOnly(HashState):
         x: int
 
     st = MyStateHashableOnly(10)
@@ -54,7 +54,7 @@ def test_element_change_hashable_only(fixed_random_seed):
 
 def test_set_delete_hashable_only(fixed_random_seed):
     @dataclass
-    class MyStateHashableOnly(State):
+    class MyStateHashableOnly(HashState):
         x: int
 
     st = MyStateHashableOnly(10)
@@ -74,14 +74,16 @@ def test_set_delete_hashable_only(fixed_random_seed):
 # ------------------------------------------------------------------------------------
 # 2) list のみ (要素は int 等の Hashable を想定し、ネストなし)
 # ------------------------------------------------------------------------------------
+
+
 @dataclass
-class MyStateListOnly(State):
+class MyStateListOnly(HashState):
     data: list
 
 
 def test_init_list_only(fixed_random_seed):
     @dataclass
-    class MyStateListOnly(State):
+    class MyStateListOnly(HashState):
         data: list
 
     st = MyStateListOnly([1, 2, 3])
@@ -90,7 +92,7 @@ def test_init_list_only(fixed_random_seed):
 
 def test_same_values_list_only(fixed_random_seed):
     @dataclass
-    class MyStateListOnly(State):
+    class MyStateListOnly(HashState):
         data: list
 
     s1 = MyStateListOnly([1, 2, 3])
@@ -102,7 +104,7 @@ def test_same_values_list_only(fixed_random_seed):
 
 def test_change_hashable_list_only(fixed_random_seed):
     @dataclass
-    class MyStateMixed(State):
+    class MyStateMixed(HashState):
         data: list
 
     st = MyStateMixed([1, 2, 3])
@@ -117,7 +119,7 @@ def test_change_hashable_list_only(fixed_random_seed):
 
 def test_set_delete_list_only(fixed_random_seed):
     @dataclass
-    class MyStateListOnly(State):
+    class MyStateListOnly(HashState):
         data: list
 
     st = MyStateListOnly([1, 2, 3])
@@ -141,7 +143,7 @@ def test_set_delete_list_only(fixed_random_seed):
 
 def test_init_mixed(fixed_random_seed):
     @dataclass
-    class MyStateMixed(State):
+    class MyStateMixed(HashState):
         x: int
         data: list
 
@@ -152,7 +154,7 @@ def test_init_mixed(fixed_random_seed):
 
 def test_same_values_mixed(fixed_random_seed):
     @dataclass
-    class MyStateMixed(State):
+    class MyStateMixed(HashState):
         x: int
         data: list
 
@@ -165,7 +167,7 @@ def test_same_values_mixed(fixed_random_seed):
 
 def test_change_hashable_mixed(fixed_random_seed):
     @dataclass
-    class MyStateMixed(State):
+    class MyStateMixed(HashState):
         x: int
         data: list
 
@@ -183,7 +185,7 @@ def test_change_hashable_mixed(fixed_random_seed):
 
 def test_set_delete_mixed(fixed_random_seed):
     @dataclass
-    class MyStateMixed(State):
+    class MyStateMixed(HashState):
         x: int
         data: list
 
@@ -206,12 +208,12 @@ def test_set_delete_mixed(fixed_random_seed):
 
 def test_different_subclass(fixed_random_seed):
     @dataclass
-    class MyState1(State):
+    class MyState1(HashState):
         x: int
         data: list
 
     @dataclass
-    class MyState2(State):
+    class MyState2(HashState):
         x: int
         data: list
 

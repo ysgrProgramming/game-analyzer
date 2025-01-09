@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from game_analyzer import State, Game, Solver
 from typing import Literal
 from problems.shiritori import CASE_LIST
-from collections import defaultdict
 
 
 @dataclass
