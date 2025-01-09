@@ -1,5 +1,5 @@
-from .solver import Solver
+from .new_solver import RecursiveSolver
 
 __all__ = [
-    "Solver",
+    "RecursiveSolver",
 ]

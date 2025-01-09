@@ -12,7 +12,7 @@ sys.setrecursionlimit(10**9)
 
 
 @dataclass
-class Solver:
+class RecursiveSolver:
     _game: Game = None  # type: ignore
     _hash_dict: dict[int, int] = field(default_factory=dict)
     _eval_list: array = field(default_factory=lambda: array("i"))
