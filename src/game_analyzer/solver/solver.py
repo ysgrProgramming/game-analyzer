@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 import time
 from array import array
 from dataclasses import dataclass
@@ -11,8 +10,6 @@ from heapq import heappush
 from game_analyzer import Game
 from game_analyzer import Result
 from game_analyzer import State
-
-sys.setrecursionlimit(10**9)
 
 
 @dataclass
@@ -33,8 +30,7 @@ class Solver:
     def solve(self, game: Game) -> Result:
         self._game = game
         start_sgg_time = time.time()
-        init_idx = self._register_state(game.init_state)
-        self._search_game_graph(game.init_state, init_idx)
+        self._search_game_graph()
         start_ra_time = time.time()
         self._retrograde_analyze()
         end_solve = time.time()
@@ -63,31 +59,38 @@ class Solver:
         self._child_count_list.append(0)
         return idx
 
-    def _search_game_graph(self, state: State, idx: int) -> None:
+    def _search_game_graph(self) -> None:  # noqa: C901
         eval_list = self._eval_list
         depth_list = self._depth_list
         child_count_list = self._child_count_list
         graph_inv = self._graph_inv
         hash_dict = self._hash_dict
         evaluate_state = self._game.evaluate_state
+        find_next_states = self._game.find_next_states
+        register_state = self._register_state
+        init_state = self._game.init_state
 
-        for next_state in self._game.find_next_states(state):
-            next_hash = next_state.to_hash()
-            if next_hash in hash_dict:
-                next_idx = hash_dict[next_hash]
-            else:
-                next_idx = self._register_state(next_state)
-                next_res = evaluate_state(next_state)
-                if next_res is not None:
-                    eval_list[next_idx] = next_res
-                    depth_list[next_idx] = 0
-                else:
-                    self._search_game_graph(next_state, next_idx)
-            child_count_list[idx] += 1
-            graph_inv[next_idx].append(idx)
-        if child_count_list[idx] == 0:
-            eval_list[idx] = self._game.default_eval
-            depth_list[idx] = 0
+        todo = [init_state]
+        todo_idx = array("I", [register_state(init_state)])
+        while todo:
+            state, idx = todo.pop(), todo_idx.pop()
+            for next_state in find_next_states(state):
+                next_hash = next_state.to_hash()
+                next_idx = hash_dict.get(next_hash)
+                if next_idx is None:
+                    next_idx = register_state(next_state)
+                    next_res = evaluate_state(next_state)
+                    if next_res is None:
+                        todo.append(next_state)
+                        todo_idx.append(next_idx)
+                    else:
+                        eval_list[next_idx] = next_res
+                        depth_list[next_idx] = 0
+                child_count_list[idx] += 1
+                graph_inv[next_idx].append(idx)
+            if child_count_list[idx] == 0:
+                eval_list[idx] = self._game.default_eval
+                depth_list[idx] = 0
 
     def _retrograde_analyze(self) -> None:  # noqa: C901
         child_count_list = self._child_count_list
@@ -105,24 +108,28 @@ class Solver:
                 self._eval_list[idx] = 0
                 self._depth_list[idx] = -1
 
-    def _confirm_eval(self, idx: int):  # noqa: C901
+    def _confirm_eval(self, start_idx: int):  # noqa: C901
         eval_list = self._eval_list
         depth_list = self._depth_list
         child_count_list = self._child_count_list
-        prev_ev, prev_depth = -eval_list[idx], depth_list[idx] + 1
-        for prev_idx in self._graph_inv[idx]:
-            if child_count_list[prev_idx] == 0:
-                continue
-            child_count_list[prev_idx] -= 1
-            if self._is_better_eval(prev_ev, prev_depth, prev_idx):
-                eval_list[prev_idx] = prev_ev
-                depth_list[prev_idx] = prev_depth
-                if prev_ev >= 0:
-                    self._add_to_queue(prev_idx)
-            if child_count_list[prev_idx] == 0:
-                self._confirm_eval(prev_idx)
-        child_count_list[idx] = 0
-        self._graph_inv[idx].clear()
+
+        todo_idx = [start_idx]
+        while todo_idx:
+            idx = todo_idx.pop()
+            prev_ev, prev_depth = -eval_list[idx], depth_list[idx] + 1
+            for prev_idx in self._graph_inv[idx]:
+                if child_count_list[prev_idx] == 0:
+                    continue
+                child_count_list[prev_idx] -= 1
+                if self._is_better_eval(prev_ev, prev_depth, prev_idx):
+                    eval_list[prev_idx] = prev_ev
+                    depth_list[prev_idx] = prev_depth
+                    if prev_ev >= 0:
+                        self._add_to_queue(prev_idx)
+                if child_count_list[prev_idx] == 0:
+                    todo_idx.append(prev_idx)
+            child_count_list[idx] = 0
+            self._graph_inv[idx] = []
 
     def _is_better_eval(self, ev: int, depth: int, idx: int):
         if self._depth_list[idx] == -1:

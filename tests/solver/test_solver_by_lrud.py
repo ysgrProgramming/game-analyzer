@@ -4,7 +4,7 @@ from typing import Literal
 from problems.lrud import CASE_LIST
 
 
-@dataclass
+@dataclass(slots=True)
 class LRUDState(State):
     r: int
     c: int
@@ -14,7 +14,7 @@ class LRUDState(State):
 
 class LRUD(Game):
     move_dict = {"L": (0, -1), "R": (0, 1), "U": (-1, 0), "D": (1, 0)}
-    
+
     def __init__(self, h, w, init_cd, s_list, t_list, max_step):
         self.h = h
         self.w = w
@@ -30,11 +30,11 @@ class LRUD(Game):
         if turn == 0:
             d = [(0, 0), self.move_dict[self.s_list[step]]]
             for dr, dc in d:
-                yield LRUDState(r=r+dr, c=c+dc, step=step, turn=1)
+                yield LRUDState(r=r + dr, c=c + dc, step=step, turn=1)
         else:
             d = [(0, 0), self.move_dict[self.t_list[step]]]
             for dr, dc in d:
-                yield LRUDState(r=r+dr, c=c+dc, step=step+1, turn=0)
+                yield LRUDState(r=r + dr, c=c + dc, step=step + 1, turn=0)
 
     def find_mirror_states(self, state):
         yield state

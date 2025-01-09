@@ -1,24 +1,28 @@
 import random
 from collections.abc import Hashable
 from collections.abc import Iterable
+from dataclasses import dataclass
 from typing import ClassVar
 
 
+@dataclass(slots=True)
 class State:
     _zobrist_map: ClassVar[dict] = {}
-    _rand_bit_size: ClassVar[int] = 64
+    _rand_bit_size: ClassVar[int] = 60
 
     def to_hash(self) -> int:
-        state_dict = self.to_dict()
         if self._zobrist_map == {}:
-            self._init_zobrist_map(state_dict, self._zobrist_map)
+            self._init_zobrist_map(self.to_dict(), self._zobrist_map)
         h = 0
-        for k, v in state_dict.items():
-            h ^= self._get_zobrist_hash(v, self._zobrist_map[k])
+        for k in self.__slots__:
+            h ^= self._get_zobrist_hash(getattr(self, k), self._zobrist_map[k])
         return h
 
     def to_dict(self) -> dict:
-        return self.__dict__
+        d = {}
+        for k in self.__slots__:
+            d[k] = getattr(self, k)
+        return d
 
     def _get_zobrist_hash(self, obj, mapping) -> int:  # noqa: C901
         if isinstance(obj, Hashable):

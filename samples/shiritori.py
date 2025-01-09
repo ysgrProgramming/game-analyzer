@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import random
-import sys
 import time
 from abc import ABC
 from abc import abstractmethod
@@ -16,21 +15,24 @@ from typing import ClassVar
 from typing import Literal
 
 
+@dataclass(slots=True)
 class State:
     _zobrist_map: ClassVar[dict] = {}
-    _rand_bit_size: ClassVar[int] = 64
+    _rand_bit_size: ClassVar[int] = 60
 
     def to_hash(self) -> int:
-        state_dict = self.to_dict()
         if self._zobrist_map == {}:
-            self._init_zobrist_map(state_dict, self._zobrist_map)
+            self._init_zobrist_map(self.to_dict(), self._zobrist_map)
         h = 0
-        for k, v in state_dict.items():
-            h ^= self._get_zobrist_hash(v, self._zobrist_map[k])
+        for k in self.__slots__:
+            h ^= self._get_zobrist_hash(getattr(self, k), self._zobrist_map[k])
         return h
 
     def to_dict(self) -> dict:
-        return self.__dict__
+        d = {}
+        for k in self.__slots__:
+            d[k] = getattr(self, k)
+        return d
 
     def _get_zobrist_hash(self, obj, mapping) -> int:  # noqa: C901
         if isinstance(obj, Hashable):
@@ -80,9 +82,6 @@ class Game(ABC):
         return None
 
 
-sys.setrecursionlimit(10**9)
-
-
 @dataclass
 class Solver:
     _game: Game = None  # type: ignore
@@ -91,7 +90,7 @@ class Solver:
     _depth_list: array = field(default_factory=lambda: array("i"))
     _graph_inv: list[list[int]] = field(default_factory=list)
     _child_count_list: array = field(default_factory=lambda: array("I"))
-    _queue_dict: dict[tuple[int, int], list[int]] = field(default_factory=dict)
+    _queue_dict: dict[tuple[int, int], array] = field(default_factory=dict)
     _key_list: list[tuple[int, int]] = field(default_factory=list)
 
     @property
@@ -101,8 +100,7 @@ class Solver:
     def solve(self, game: Game) -> Result:
         self._game = game
         start_sgg_time = time.time()
-        init_idx = self._register_state(game.init_state)
-        self._search_game_graph(game.init_state, init_idx)
+        self._search_game_graph()
         start_ra_time = time.time()
         self._retrograde_analyze()
         end_solve = time.time()
@@ -131,31 +129,38 @@ class Solver:
         self._child_count_list.append(0)
         return idx
 
-    def _search_game_graph(self, state: State, idx: int) -> None:
+    def _search_game_graph(self) -> None:  # noqa: C901
         eval_list = self._eval_list
         depth_list = self._depth_list
         child_count_list = self._child_count_list
         graph_inv = self._graph_inv
         hash_dict = self._hash_dict
         evaluate_state = self._game.evaluate_state
+        find_next_states = self._game.find_next_states
+        register_state = self._register_state
+        init_state = self._game.init_state
 
-        for next_state in self._game.find_next_states(state):
-            next_hash = next_state.to_hash()
-            if next_hash in hash_dict:
-                next_idx = hash_dict[next_hash]
-            else:
-                next_idx = self._register_state(next_state)
-                next_res = evaluate_state(next_state)
-                if next_res is not None:
-                    eval_list[next_idx] = next_res
-                    depth_list[next_idx] = 0
-                else:
-                    self._search_game_graph(next_state, next_idx)
-            child_count_list[idx] += 1
-            graph_inv[next_idx].append(idx)
-        if child_count_list[idx] == 0:
-            eval_list[idx] = self._game.default_eval
-            depth_list[idx] = 0
+        todo = [init_state]
+        todo_idx = array("I", [register_state(init_state)])
+        while todo:
+            state, idx = todo.pop(), todo_idx.pop()
+            for next_state in find_next_states(state):
+                next_hash = next_state.to_hash()
+                next_idx = hash_dict.get(next_hash)
+                if next_idx is None:
+                    next_idx = register_state(next_state)
+                    next_res = evaluate_state(next_state)
+                    if next_res is None:
+                        todo.append(next_state)
+                        todo_idx.append(next_idx)
+                    else:
+                        eval_list[next_idx] = next_res
+                        depth_list[next_idx] = 0
+                child_count_list[idx] += 1
+                graph_inv[next_idx].append(idx)
+            if child_count_list[idx] == 0:
+                eval_list[idx] = self._game.default_eval
+                depth_list[idx] = 0
 
     def _retrograde_analyze(self) -> None:  # noqa: C901
         child_count_list = self._child_count_list
@@ -173,24 +178,28 @@ class Solver:
                 self._eval_list[idx] = 0
                 self._depth_list[idx] = -1
 
-    def _confirm_eval(self, idx: int):  # noqa: C901
+    def _confirm_eval(self, start_idx: int):  # noqa: C901
         eval_list = self._eval_list
         depth_list = self._depth_list
         child_count_list = self._child_count_list
-        prev_ev, prev_depth = -eval_list[idx], depth_list[idx] + 1
-        for prev_idx in self._graph_inv[idx]:
-            if child_count_list[prev_idx] == 0:
-                continue
-            child_count_list[prev_idx] -= 1
-            if self._is_better_eval(prev_ev, prev_depth, prev_idx):
-                eval_list[prev_idx] = prev_ev
-                depth_list[prev_idx] = prev_depth
-                if prev_ev >= 0:
-                    self._add_to_queue(prev_idx)
-            if child_count_list[prev_idx] == 0:
-                self._confirm_eval(prev_idx)
-        child_count_list[idx] = 0
-        self._graph_inv[idx].clear()
+
+        todo_idx = [start_idx]
+        while todo_idx:
+            idx = todo_idx.pop()
+            prev_ev, prev_depth = -eval_list[idx], depth_list[idx] + 1
+            for prev_idx in self._graph_inv[idx]:
+                if child_count_list[prev_idx] == 0:
+                    continue
+                child_count_list[prev_idx] -= 1
+                if self._is_better_eval(prev_ev, prev_depth, prev_idx):
+                    eval_list[prev_idx] = prev_ev
+                    depth_list[prev_idx] = prev_depth
+                    if prev_ev >= 0:
+                        self._add_to_queue(prev_idx)
+                if child_count_list[prev_idx] == 0:
+                    todo_idx.append(prev_idx)
+            child_count_list[idx] = 0
+            self._graph_inv[idx] = []
 
     def _is_better_eval(self, ev: int, depth: int, idx: int):
         if self._depth_list[idx] == -1:
@@ -202,12 +211,12 @@ class Solver:
     def _add_to_queue(self, idx: int):
         ev, depth = self._eval_list[idx], self._depth_list[idx]
         key = (-ev, ev * depth)
-        lst = self._queue_dict.get(key)
-        if key not in self._queue_dict:
-            lst = []
-            self._queue_dict[key] = lst
+        arr = self._queue_dict.get(key)
+        if arr is None:
+            arr = array("I")
+            self._queue_dict[key] = arr
             heappush(self._key_list, key)
-        self._queue_dict[key].append(idx)
+        arr.append(idx)
 
 
 @dataclass
@@ -226,25 +235,31 @@ class Result:
         return None
 
 
-@dataclass
+@dataclass(slots=True)
 class ShiritoriState(State):
-    last: int
+    last: Literal[-1] | str
 
 
 class Shiritori(Game):
     def __init__(self, words):
         self.words = words
-        self.default_eval = 1
+        self.word_dict = {}
+        for word in words:
+            if word[:3] not in self.word_dict:
+                self.word_dict[word[:3]] = set()
+            self.word_dict[word[:3]].add(word[-3:])
+        self.default_eval = -1
         self.init_state = ShiritoriState(last=-1)
 
     def find_next_states(self, state):
         if state.last == -1:
-            for i in range(len(self.words)):
-                yield ShiritoriState(last=i)
+            for word in self.words:
+                yield ShiritoriState(last=word[-3:])
         else:
-            for i in range(len(self.words)):
-                if self.words[state.last][-3:] == self.words[i][:3]:
-                    yield ShiritoriState(last=i)
+            if state.last not in self.word_dict:
+                return
+            for word in self.word_dict[state.last]:
+                yield ShiritoriState(last=word[:])
 
     def find_mirror_states(self, state):
         yield state
@@ -253,15 +268,17 @@ class Shiritori(Game):
         return None
 
 
-n = int(input())
-words = [input() for _ in range(n)]
+# n = int(input())
+# words = [input() for _ in range(n)]
+n = 2
+words = ["aaa", "aaaddd"]
 shiritori = Shiritori(words=words)
 solver = Solver()
 result = solver.solve(shiritori)
-for i in range(n):
-    state = ShiritoriState(last=i)
+for word in words:
+    state = ShiritoriState(word[-3:])
     ev, _ = result.state_to_params(state)
-    if ev == 1:
+    if ev == -1:
         print("Takahashi")
     elif ev == 0:
         print("Draw")
