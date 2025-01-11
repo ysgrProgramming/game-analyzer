@@ -6,7 +6,7 @@ from typing import ClassVar
 
 @dataclass
 class State:
-    __hash__ = None  # type: ignore
+    __hash__ = None
     _digest_map: ClassVar[dict] = {}
     _bit_size: ClassVar[int] = 60
 

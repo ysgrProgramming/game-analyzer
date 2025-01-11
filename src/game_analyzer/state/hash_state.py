@@ -6,7 +6,7 @@ from .state import State
 
 
 class HashArray(MutableSequence):
-    __hash__ = None  # type: ignore
+    __hash__ = None
 
     def __init__(
         self,
