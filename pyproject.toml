@@ -43,6 +43,7 @@ ignore = [
     "S311",     # Standard pseudo-random generators are not suitable for cryptographic purposes
     "TRY003",   # Avoid specifying long messages outside the exception class
     "EM101",    # Exception must not use a string literal, assign to variable first
+    "T201",     # `print` found
 ]
 exclude = ["tests/*"]
 
