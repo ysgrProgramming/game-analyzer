@@ -1,10 +1,10 @@
-from game_analyzer import State, Game, Solver
+from game_analyzer import HashState, Game, Solver
 from dataclasses import dataclass
 from tests.solver.problems.stones import CASE_LIST
 
 
 @dataclass
-class StonesState(State):
+class StonesState(HashState):
     stones: int
 
 
@@ -16,9 +16,10 @@ class Stones(Game):
 
     def find_next_states(self, state):
         for hand in self.hand_list:
-            next_stones = state.stones - hand
-            if next_stones >= 0:
-                yield StonesState(stones=next_stones)
+            state.stones -= hand
+            if state.stones >= 0:
+                yield state
+            state.stones += hand
 
     def find_mirror_states(self, state):
         yield state

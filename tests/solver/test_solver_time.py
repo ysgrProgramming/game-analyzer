@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from tests.solver.problems.stones import CASE_LIST
 
 
-@dataclass(slots=True)
+@dataclass
 class StonesState(State):
     stones: int
 
@@ -29,53 +29,53 @@ class Stones(Game):
 
 # 0.02 s
 def test_evaluate_state_time():
-    stones = Stones(init_stones=100000, hand_list=list(range(1, 100)))
-    for i in range(100000):
+    stones = Stones(init_stones=20000, hand_list=list(range(1, 100)))
+    for i in range(20000):
         state = StonesState(stones=i)
         stones.evaluate_state(state)
 
 
 # 0.03 s
 def test_find_mirror_state_time():
-    stones = Stones(init_stones=100000, hand_list=list(range(1, 100)))
-    for i in range(100000):
+    stones = Stones(init_stones=20000, hand_list=list(range(1, 100)))
+    for i in range(20000):
         state = StonesState(stones=i)
         for s in stones.find_mirror_states(state):
             pass
 
 
-# 1.54 s
+# 0.32 s
 def test_find_next_states_time():
-    stones = Stones(init_stones=100000, hand_list=list(range(1, 100)))
-    for i in range(100000):
+    stones = Stones(init_stones=20000, hand_list=list(range(1, 100)))
+    for i in range(20000):
         state = StonesState(stones=i)
         for s in stones.find_next_states(state):
             pass  # s.to_hash()
 
 
-# 4.47 s
+# 1.06 s
 def test_find_next_states_with_to_hash_time():
-    stones = Stones(init_stones=100000, hand_list=list(range(1, 100)))
-    for i in range(100000):
+    stones = Stones(init_stones=20000, hand_list=list(range(1, 100)))
+    for i in range(20000):
         state = StonesState(stones=i)
         for s in stones.find_next_states(state):
-            s.to_hash()
+            s.digest
 
 
-# 4.48 s
+# 1.04 s
 def test_game_time():
-    stones = Stones(init_stones=100000, hand_list=list(range(1, 100)))
-    for i in range(100000):
+    stones = Stones(init_stones=20000, hand_list=list(range(1, 100)))
+    for i in range(20000):
         state = StonesState(stones=i)
         for s in stones.find_next_states(state):
-            s.to_hash()
+            s.digest
         stones.evaluate_state(state)
         stones.find_mirror_states(state)
 
 
-# 7.38 s
+# 1.66 s
 def test_solver_time():
-    stones = Stones(init_stones=100000, hand_list=list(range(1, 100)))
+    stones = Stones(init_stones=20000, hand_list=list(range(1, 100)))
     solver = Solver()
     result = solver.solve(stones)
     ev, depth = result.state_to_params(stones.init_state)

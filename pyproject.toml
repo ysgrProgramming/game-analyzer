@@ -26,7 +26,7 @@ package-dir = {""="src"}
 [tool.ruff]
 line-length = 120
 indent-width = 4
-include = ["*.py", "*.pyi", "**/pyproject.toml", "*.ipynb"]
+include = ["*.py", "*.pyi", "**/pyproject.toml"]
 exclude = ["externals"]
 preview = true
 

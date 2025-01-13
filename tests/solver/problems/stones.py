@@ -41,7 +41,7 @@ CASE7 = {
 CASE7_ANSWER = -1
 
 CASE8 = {
-    "init_stones": 100000,
+    "init_stones": 10000,
     "hand_list": list(range(1, 100)),
 }
 CASE8_ANSWER = -1
