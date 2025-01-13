@@ -2,66 +2,49 @@ from __future__ import annotations
 
 import random
 import time
-from abc import ABC
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 from array import array
-from collections.abc import Hashable
-from collections.abc import Iterable
-from dataclasses import dataclass
-from dataclasses import field
-from heapq import heappop
-from heapq import heappush
-from typing import ClassVar
-from typing import Literal
+from collections.abc import Hashable, Iterable, MutableSequence
+from dataclasses import dataclass, field
+from heapq import heappop, heappush
+from typing import ClassVar, Literal
 
 
-@dataclass(slots=True)
+@dataclass
 class State:
-    _zobrist_map: ClassVar[dict] = {}
-    _rand_bit_size: ClassVar[int] = 60
+    __hash__ = None
+    _digest_map: ClassVar[dict] = {}
+    _bit_size: ClassVar[int] = 60
 
-    def to_hash(self) -> int:
-        if self._zobrist_map == {}:
-            self._init_zobrist_map(self.to_dict(), self._zobrist_map)
+    def __init_subclass__(cls) -> None:
+        cls._digest_map = {}
+        cls._bit_size = 60
+
+    @property
+    def digest(self) -> int:
         h = 0
-        for k in self.__slots__:
-            h ^= self._get_zobrist_hash(getattr(self, k), self._zobrist_map[k])
+        for k, v in self.to_dict().items():
+            if k not in self._digest_map:
+                self._digest_map[k] = {}
+            h ^= self._get_obj_digest(v, self._digest_map[k])
         return h
 
     def to_dict(self) -> dict:
-        d = {}
-        for k in self.__slots__:
-            d[k] = getattr(self, k)
-        return d
+        return self.__dict__
 
-    def _get_zobrist_hash(self, obj, mapping) -> int:  # noqa: C901
+    def _get_obj_digest(self, obj, mapping) -> int:
         if isinstance(obj, Hashable):
             if obj not in mapping:
-                mapping[obj] = random.randrange(1 << self._rand_bit_size)  # noqa: S311
+                mapping[obj] = random.randrange(1 << self._bit_size)
             return mapping[obj]
-        if isinstance(obj, Iterable):
+        if isinstance(obj, MutableSequence):
             h = 0
-            for v, m in zip(obj, mapping, strict=True):
-                h ^= self._get_zobrist_hash(v, m)
+            for i, v in enumerate(obj):
+                if i not in mapping:
+                    mapping[i] = {}
+                h ^= self._get_obj_digest(v, mapping[i])
             return h
-        msg = "Unsupported type for zobrist hashing"
-        raise TypeError(msg)
-
-    def _init_zobrist_map(self, obj, mapping):  # noqa: C901
-        if isinstance(obj, Hashable):
-            return
-        if isinstance(obj, dict):
-            for k, v in obj.items():
-                mapping[k] = {}
-                self._init_zobrist_map(v, mapping[k])
-            return
-        if isinstance(obj, Iterable):
-            mapping = [{} for _ in range(len(obj))]  # type: ignore
-            for v, m in zip(obj, mapping, strict=True):
-                self._init_zobrist_map(v, m)
-            return
-        msg = "Unsupported type for zobrist hashing"
-        raise TypeError(msg)
+        raise TypeError("Value must be mutable-sequence or digestable")
 
 
 @dataclass
@@ -129,7 +112,7 @@ class Solver:
         self._child_count_list.append(0)
         return idx
 
-    def _search_game_graph(self) -> None:  # noqa: C901
+    def _search_game_graph(self) -> None:  # noqa: C901, PLR0914
         eval_list = self._eval_list
         depth_list = self._depth_list
         child_count_list = self._child_count_list
@@ -199,7 +182,7 @@ class Solver:
                 if child_count_list[prev_idx] == 0:
                     todo_idx.append(prev_idx)
             child_count_list[idx] = 0
-            self._graph_inv[idx] = []
+            self._graph_inv[idx].clear()
 
     def _is_better_eval(self, ev: int, depth: int, idx: int):
         if self._depth_list[idx] == -1:
@@ -235,7 +218,7 @@ class Result:
         return None
 
 
-@dataclass(slots=True)
+@dataclass
 class ShiritoriState(State):
     last: Literal[-1] | str
 
@@ -261,26 +244,27 @@ class Shiritori(Game):
             for word in self.word_dict[state.last]:
                 yield ShiritoriState(last=word[:])
 
-    def find_mirror_states(self, state):
+    @staticmethod
+    def find_mirror_states(state):
         yield state
 
-    def evaluate_state(self, state):
+    @staticmethod
+    def evaluate_state(_):
         return None
 
 
-# n = int(input())
-# words = [input() for _ in range(n)]
-n = 2
-words = ["aaa", "aaaddd"]
-shiritori = Shiritori(words=words)
-solver = Solver()
-result = solver.solve(shiritori)
-for word in words:
-    state = ShiritoriState(word[-3:])
-    ev, _ = result.state_to_params(state)
-    if ev == -1:
-        print("Takahashi")
-    elif ev == 0:
-        print("Draw")
-    else:
-        print("Aoki")
+if __name__ == "__main__":
+    n = int(input())
+    words = [input() for _ in range(n)]
+    shiritori = Shiritori(words=words)
+    solver = Solver()
+    result = solver.solve(shiritori)
+    for word in words:
+        state = ShiritoriState(word[-3:])
+        ev, _ = result.state_to_params(state)
+        if ev == -1:
+            print("Takahashi")
+        elif ev == 0:
+            print("Draw")
+        else:
+            print("Aoki")

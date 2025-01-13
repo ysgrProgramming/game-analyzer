@@ -4,7 +4,7 @@ from typing import Literal
 from problems.lrud import CASE_LIST
 
 
-@dataclass(slots=True)
+@dataclass
 class LRUDState(State):
     r: int
     c: int

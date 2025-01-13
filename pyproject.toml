@@ -4,7 +4,6 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "game-analyzer"
-version = "0.1.0"
 description = "Analyze a game"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -27,6 +26,9 @@ package-dir = {""="src"}
 [tool.ruff]
 line-length = 120
 indent-width = 4
+include = ["*.py", "*.pyi", "**/pyproject.toml"]
+exclude = ["externals"]
+preview = true
 
 [tool.ruff.lint]
 select = ["ALL"]
@@ -35,23 +37,15 @@ ignore = [
     "ANN",      # annotation
     "PGH",      # pgh
     "TCH",      # tch
+    "CPY",      # cpy
     "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
-    "RUF"       # ruf
+    "RUF",      # ruf
+    "S311",     # Standard pseudo-random generators are not suitable for cryptographic purposes
+    "TRY003",   # Avoid specifying long messages outside the exception class
+    "EM101",    # Exception must not use a string literal, assign to variable first
+    "T201",     # `print` found
 ]
-exclude = [
-    "tests/*",
-]
-fixable = ["ALL"]
+exclude = ["tests/*"]
 
-[tool.ruff.lint.mccabe]
-max-complexity = 5
-
-[tool.ruff.isort]
-force-single-line = true
-combine-as-imports = true
-
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
-skip-magic-trailing-comma = false
-line-ending = "auto"
+[tool.ruff.lint.pylint]
+max-branches = 18

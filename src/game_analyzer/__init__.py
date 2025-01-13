@@ -1,4 +1,4 @@
-from .state import State  # noqa: I001
+from .state import State, HashArray, HashState  # noqa: I001
 from .game import Game
 from .result import Result
 from .solver import Solver
@@ -8,4 +8,6 @@ __all__ = [
     "Solver",
     "Result",
     "State",
+    "HashArray",
+    "HashState",
 ]
